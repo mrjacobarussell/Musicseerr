@@ -53,7 +53,7 @@
 	/>
 
 	<div class="relative z-10 flex flex-col lg:flex-row gap-6 lg:gap-8 p-4 sm:p-6 lg:p-8">
-		<div class="w-full lg:w-64 xl:w-80 flex-shrink-0">
+		<div class="w-full lg:w-64 xl:w-80 shrink-0">
 			<AlbumImage
 				mbid={album.musicbrainz_id}
 				customUrl={album.cover_url}
