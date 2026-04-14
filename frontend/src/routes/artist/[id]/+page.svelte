@@ -343,7 +343,8 @@
 								>Loading releases...</span
 							>
 							<span class="text-sm text-base-content/70"
-								>{#if sourceTotalCount}Loaded {loadedReleaseCount} of {sourceTotalCount} releases{:else}Loading {loadedReleaseCount} releases{/if}</span
+								>{#if sourceTotalCount}Loaded {loadedReleaseCount} of {sourceTotalCount} releases{:else}Loading
+									{loadedReleaseCount} releases{/if}</span
 							>
 						</div>
 					</div>
