@@ -1,16 +1,22 @@
 import logging
 import msgspec
 from fastapi import APIRouter, Depends, HTTPException
+import msgspec
 from api.v1.schemas.settings import (
-    UserPreferences, 
-    LidarrSettings, 
+    UserPreferences,
+    LidarrSettings,
     LidarrConnectionSettings,
+    LidarrConnectionSettingsResponse,
     JellyfinConnectionSettings,
+    JellyfinConnectionSettingsResponse,
     JellyfinVerifyResponse,
     JellyfinUserInfo,
     NavidromeConnectionSettings,
+    NavidromeConnectionSettingsResponse,
     ListenBrainzConnectionSettings,
+    ListenBrainzConnectionSettingsResponse,
     YouTubeConnectionSettings,
+    YouTubeConnectionSettingsResponse,
     HomeSettings,
     LidarrVerifyResponse,
     LocalFilesConnectionSettings,
@@ -23,7 +29,9 @@ from api.v1.schemas.settings import (
     ScrobbleSettings,
     PrimaryMusicSourceSettings,
     PlexConnectionSettings,
+    PlexConnectionSettingsResponse,
     PlexVerifyResponse,
+    _is_masked,
 )
 from api.v1.schemas.plex import PlexLibrarySectionInfo
 from api.v1.schemas.common import VerifyConnectionResponse
@@ -140,14 +148,14 @@ async def update_advanced_settings(
         raise HTTPException(status_code=400, detail="That settings value isn't valid")
 
 
-@router.get("/lidarr/connection", response_model=LidarrConnectionSettings)
+@router.get("/lidarr/connection", response_model=LidarrConnectionSettingsResponse)
 async def get_lidarr_connection(
     preferences_service: PreferencesService = Depends(get_preferences_service),
 ):
-    return preferences_service.get_lidarr_connection()
+    return LidarrConnectionSettingsResponse.from_settings(preferences_service.get_lidarr_connection())
 
 
-@router.put("/lidarr/connection", response_model=LidarrConnectionSettings)
+@router.put("/lidarr/connection", response_model=LidarrConnectionSettingsResponse)
 async def update_lidarr_connection(
     settings: LidarrConnectionSettings = MsgSpecBody(LidarrConnectionSettings),
     preferences_service: PreferencesService = Depends(get_preferences_service),
@@ -155,11 +163,14 @@ async def update_lidarr_connection(
 ):
     try:
         from repositories.lidarr.base import reset_lidarr_circuit_breaker
-        
+
+        if _is_masked(settings.lidarr_api_key):
+            current = preferences_service.get_lidarr_connection()
+            settings = msgspec.structs.replace(settings, lidarr_api_key=current.lidarr_api_key)
         preferences_service.save_lidarr_connection(settings)
         reset_lidarr_circuit_breaker()
         await settings_service.on_lidarr_settings_changed()
-        return settings
+        return LidarrConnectionSettingsResponse.from_settings(preferences_service.get_lidarr_connection())
     except ConfigurationError as e:
         logger.warning(f"Configuration error updating Lidarr connection: {e}")
         raise HTTPException(status_code=400, detail="Lidarr connection settings are incomplete or invalid")
@@ -222,23 +233,26 @@ async def update_lidarr_metadata_profile_preferences(
         raise HTTPException(status_code=502, detail="Couldn't update the Lidarr metadata profile")
 
 
-@router.get("/jellyfin", response_model=JellyfinConnectionSettings)
+@router.get("/jellyfin", response_model=JellyfinConnectionSettingsResponse)
 async def get_jellyfin_settings(
     preferences_service: PreferencesService = Depends(get_preferences_service),
 ):
-    return preferences_service.get_jellyfin_connection()
+    return JellyfinConnectionSettingsResponse.from_settings(preferences_service.get_jellyfin_connection())
 
 
-@router.put("/jellyfin", response_model=JellyfinConnectionSettings)
+@router.put("/jellyfin", response_model=JellyfinConnectionSettingsResponse)
 async def update_jellyfin_settings(
     settings: JellyfinConnectionSettings = MsgSpecBody(JellyfinConnectionSettings),
     preferences_service: PreferencesService = Depends(get_preferences_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ):
     try:
+        if _is_masked(settings.api_key):
+            current = preferences_service.get_jellyfin_connection()
+            settings = msgspec.structs.replace(settings, api_key=current.api_key)
         preferences_service.save_jellyfin_connection(settings)
         await settings_service.on_jellyfin_settings_changed()
-        return settings
+        return JellyfinConnectionSettingsResponse.from_settings(preferences_service.get_jellyfin_connection())
     except ConfigurationError as e:
         logger.warning(f"Configuration error updating Jellyfin settings: {e}")
         raise HTTPException(status_code=400, detail="Jellyfin settings are incomplete or invalid")
@@ -254,23 +268,26 @@ async def verify_jellyfin_connection(
     return JellyfinVerifyResponse(success=result.success, message=result.message, users=users)
 
 
-@router.get("/navidrome", response_model=NavidromeConnectionSettings)
+@router.get("/navidrome", response_model=NavidromeConnectionSettingsResponse)
 async def get_navidrome_settings(
     preferences_service: PreferencesService = Depends(get_preferences_service),
 ):
-    return preferences_service.get_navidrome_connection()
+    return NavidromeConnectionSettingsResponse.from_settings(preferences_service.get_navidrome_connection())
 
 
-@router.put("/navidrome", response_model=NavidromeConnectionSettings)
+@router.put("/navidrome", response_model=NavidromeConnectionSettingsResponse)
 async def update_navidrome_settings(
     settings: NavidromeConnectionSettings = MsgSpecBody(NavidromeConnectionSettings),
     preferences_service: PreferencesService = Depends(get_preferences_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ):
     try:
+        if _is_masked(settings.password):
+            current = preferences_service.get_navidrome_connection()
+            settings = msgspec.structs.replace(settings, password=current.password)
         preferences_service.save_navidrome_connection(settings)
         await settings_service.on_navidrome_settings_changed(enabled=settings.enabled)
-        return preferences_service.get_navidrome_connection()
+        return NavidromeConnectionSettingsResponse.from_settings(preferences_service.get_navidrome_connection())
     except ConfigurationError as e:
         logger.warning("Configuration error updating Navidrome settings: %s", e)
         raise HTTPException(status_code=400, detail="Navidrome settings are incomplete or invalid")
@@ -285,24 +302,27 @@ async def verify_navidrome_connection(
     return VerifyConnectionResponse(valid=result.valid, message=result.message)
 
 
-@router.get("/plex", response_model=PlexConnectionSettings)
+@router.get("/plex", response_model=PlexConnectionSettingsResponse)
 async def get_plex_settings(
     preferences_service: PreferencesService = Depends(get_preferences_service),
 ):
-    return preferences_service.get_plex_connection()
+    return PlexConnectionSettingsResponse.from_settings(preferences_service.get_plex_connection())
 
 
-@router.put("/plex", response_model=PlexConnectionSettings)
+@router.put("/plex", response_model=PlexConnectionSettingsResponse)
 async def update_plex_settings(
     settings: PlexConnectionSettings = MsgSpecBody(PlexConnectionSettings),
     preferences_service: PreferencesService = Depends(get_preferences_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ):
     try:
+        if _is_masked(settings.plex_token):
+            current = preferences_service.get_plex_connection()
+            settings = msgspec.structs.replace(settings, plex_token=current.plex_token)
         preferences_service.save_plex_connection(settings)
         await settings_service.on_plex_settings_changed(enabled=settings.enabled)
         logger.info("Updated Plex connection settings")
-        return preferences_service.get_plex_connection()
+        return PlexConnectionSettingsResponse.from_settings(preferences_service.get_plex_connection())
     except ConfigurationError as e:
         logger.warning("Configuration error updating Plex settings: %s", e)
         raise HTTPException(status_code=400, detail="Plex settings are incomplete or invalid")
@@ -332,23 +352,26 @@ async def get_plex_libraries(
         raise HTTPException(status_code=502, detail="Could not fetch libraries from Plex")
 
 
-@router.get("/listenbrainz", response_model=ListenBrainzConnectionSettings)
+@router.get("/listenbrainz", response_model=ListenBrainzConnectionSettingsResponse)
 async def get_listenbrainz_settings(
     preferences_service: PreferencesService = Depends(get_preferences_service),
 ):
-    return preferences_service.get_listenbrainz_connection()
+    return ListenBrainzConnectionSettingsResponse.from_settings(preferences_service.get_listenbrainz_connection())
 
 
-@router.put("/listenbrainz", response_model=ListenBrainzConnectionSettings)
+@router.put("/listenbrainz", response_model=ListenBrainzConnectionSettingsResponse)
 async def update_listenbrainz_settings(
     settings: ListenBrainzConnectionSettings = MsgSpecBody(ListenBrainzConnectionSettings),
     preferences_service: PreferencesService = Depends(get_preferences_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ):
     try:
+        if _is_masked(settings.user_token):
+            current = preferences_service.get_listenbrainz_connection()
+            settings = msgspec.structs.replace(settings, user_token=current.user_token)
         preferences_service.save_listenbrainz_connection(settings)
         await settings_service.on_listenbrainz_settings_changed()
-        return settings
+        return ListenBrainzConnectionSettingsResponse.from_settings(preferences_service.get_listenbrainz_connection())
     except ConfigurationError as e:
         logger.warning(f"Configuration error updating ListenBrainz settings: {e}")
         raise HTTPException(status_code=400, detail="ListenBrainz settings are incomplete or invalid")
@@ -363,23 +386,26 @@ async def verify_listenbrainz_connection(
     return VerifyConnectionResponse(valid=result.valid, message=result.message)
 
 
-@router.get("/youtube", response_model=YouTubeConnectionSettings)
+@router.get("/youtube", response_model=YouTubeConnectionSettingsResponse)
 async def get_youtube_settings(
     preferences_service: PreferencesService = Depends(get_preferences_service),
 ):
-    return preferences_service.get_youtube_connection()
+    return YouTubeConnectionSettingsResponse.from_settings(preferences_service.get_youtube_connection())
 
 
-@router.put("/youtube", response_model=YouTubeConnectionSettings)
+@router.put("/youtube", response_model=YouTubeConnectionSettingsResponse)
 async def update_youtube_settings(
     settings: YouTubeConnectionSettings = MsgSpecBody(YouTubeConnectionSettings),
     preferences_service: PreferencesService = Depends(get_preferences_service),
     settings_service: SettingsService = Depends(get_settings_service),
 ):
     try:
+        if _is_masked(settings.api_key):
+            current = preferences_service.get_youtube_connection()
+            settings = msgspec.structs.replace(settings, api_key=current.api_key)
         preferences_service.save_youtube_connection(settings)
         await settings_service.on_youtube_settings_changed()
-        return settings
+        return YouTubeConnectionSettingsResponse.from_settings(preferences_service.get_youtube_connection())
     except ConfigurationError as e:
         logger.warning(f"Configuration error updating YouTube settings: {e}")
         raise HTTPException(status_code=400, detail="YouTube settings are incomplete or invalid")
