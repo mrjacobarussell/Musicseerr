@@ -53,6 +53,7 @@ from api.v1.routes import plex_library as plex_library_routes
 from api.v1.routes import plex_auth as plex_auth_routes
 from api.v1.routes import admin_users as admin_users_routes
 from api.v1.routes import emby_auth as emby_auth_routes
+from api.v1.routes import version as version_routes
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -361,6 +362,7 @@ v1_router.include_router(profile.router)
 v1_router.include_router(playlists.router)
 v1_router.include_router(admin_users_routes.router)
 v1_router.include_router(emby_auth_routes.router)
+v1_router.include_router(version_routes.router)
 app.include_router(v1_router)
 
 mount_frontend(app)

@@ -69,6 +69,9 @@
 
 	const integration = fromStore(integrationStore);
 
+	const updateCheckQuery = getUpdateCheckQuery();
+	const updateAvailable = $derived(updateCheckQuery.data?.update_available ?? false);
+
 	const connectionMap: Record<
 		string,
 		| 'lastfm'
@@ -113,7 +116,8 @@
 		{ id: 'cache', label: 'Cache', group: 'System', icon: Database },
 		{ id: 'musicbrainz', label: 'MusicBrainz', group: 'System', icon: Globe },
 		{ id: 'advanced', label: 'Advanced', group: 'System', icon: Settings },
-		{ id: 'users', label: 'Users & Access', group: 'System', icon: Lock }
+		{ id: 'users', label: 'Users & Access', group: 'System', icon: Lock },
+		{ id: 'about', label: 'About', group: 'System', icon: Info }
 	];
 
 	const groups = [...new Set(tabs.map((t) => t.group))];
@@ -172,6 +176,14 @@
 													: 'bg-base-content/20'}"
 											>
 												<span class="sr-only">{connected ? 'Connected' : 'Not connected'}</span>
+											</span>
+										{/if}
+										{#if tab.id === 'about' && updateAvailable}
+											<span
+												class="ml-auto flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent"
+											>
+												<ArrowUpCircle class="h-3 w-3" />
+												Update
 											</span>
 										{/if}
 									</button>
@@ -266,6 +278,8 @@
 							<SettingsUsers />
 						{/if}
 					</div>
+				{:else if activeTab === "about"}
+					<SettingsAbout />
 				{/if}
 			</main>
 		</div>
