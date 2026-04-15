@@ -32,6 +32,19 @@ AVATAR_DIR_NAME = "profile"
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
 
+
+def _verify_image_magic(data: bytes, content_type: str) -> bool:
+    """Check file magic bytes match the declared content type."""
+    if content_type == "image/jpeg":
+        return data[:3] == b"\xff\xd8\xff"
+    if content_type == "image/png":
+        return data[:8] == b"\x89PNG\r\n\x1a\n"
+    if content_type == "image/webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    if content_type == "image/gif":
+        return data[:6] in (b"GIF87a", b"GIF89a")
+    return False
+
 router = APIRouter(route_class=MsgSpecRoute, prefix="/profile", tags=["profile"])
 
 
@@ -156,6 +169,9 @@ async def upload_avatar(
     data = await file.read()
     if len(data) > MAX_AVATAR_SIZE:
         raise HTTPException(status_code=400, detail="Image too large. Maximum size is 5 MB")
+
+    if not _verify_image_magic(data, file.content_type):
+        raise HTTPException(status_code=400, detail="File content does not match the declared image type")
 
     ext = {
         "image/jpeg": ".jpg",
