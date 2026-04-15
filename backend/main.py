@@ -33,7 +33,7 @@ from core.exception_handlers import (
 )
 from infrastructure.resilience.retry import CircuitOpenError
 from infrastructure.msgspec_fastapi import MsgSpecJSONResponse
-from middleware import DegradationMiddleware, PerformanceMiddleware, RateLimitMiddleware
+from middleware import DegradationMiddleware, PerformanceMiddleware, RateLimitMiddleware, SecurityHeadersMiddleware
 from static_server import mount_frontend
 from api.v1.routes import (
     search, requests, library, status, queue, covers, artists, albums, settings, home, discover, profile, playlists
@@ -253,13 +253,17 @@ async def lifespan(app: FastAPI):
         logger.info("Musicseerr shut down successfully")
 
 
+app_settings = get_settings()
+_debug = app_settings.debug
+
 app = FastAPI(
     title="Musicseerr",
     description="Music request and management system",
     version="1.0.0",
-    docs_url="/api/v1/docs",
-    redoc_url="/api/v1/redoc",
-    openapi_url="/api/v1/openapi.json",
+    # Disable interactive API docs in production to reduce attack surface
+    docs_url="/api/v1/docs" if _debug else None,
+    redoc_url="/api/v1/redoc" if _debug else None,
+    openapi_url="/api/v1/openapi.json" if _debug else None,
     lifespan=lifespan,
     default_response_class=MsgSpecJSONResponse,
 )
@@ -276,6 +280,7 @@ app.add_exception_handler(StarletteHTTPException, starlette_http_exception_handl
 app.add_exception_handler(RequestValidationError, request_validation_error_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(DegradationMiddleware)
 app.add_middleware(PerformanceMiddleware)
 app.add_middleware(
@@ -286,12 +291,22 @@ app.add_middleware(
         "/api/v1/search": (10.0, 20),
         "/api/v1/discover": (10.0, 20),
         "/api/v1/covers": (15.0, 30),
+        # Stricter limits on credential-sensitive endpoints
+        "/api/v1/settings/lidarr/verify": (0.5, 5),
+        "/api/v1/settings/jellyfin/verify": (0.5, 5),
+        "/api/v1/settings/navidrome/verify": (0.5, 5),
+        "/api/v1/settings/plex/verify": (0.5, 5),
+        "/api/v1/settings/youtube/verify": (0.5, 5),
+        "/api/v1/settings/lastfm/verify": (0.5, 5),
+        "/api/v1/settings/listenbrainz/verify": (0.5, 5),
+        "/api/v1/settings/local-files/verify": (0.5, 5),
+        "/api/v1/plex/auth": (0.5, 5),
+        "/api/v1/lastfm/auth": (0.5, 5),
     },
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
 
-app_settings = get_settings()
-if app_settings.debug:
+if _debug:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
