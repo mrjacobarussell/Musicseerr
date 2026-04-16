@@ -9,7 +9,7 @@ from api.v1.schemas.settings import (
     LastFmConnectionSettingsResponse,
     LastFmVerifyResponse,
     LASTFM_SECRET_MASK,
-    _mask_secret,
+    _mask_secret,  # noqa: PLC2701
 )
 from api.v1.routes.settings import router
 from core.dependencies import get_preferences_service, get_settings_service
@@ -55,7 +55,7 @@ class TestGetLastFmSettings:
         response = client.get("/settings/lastfm")
         assert response.status_code == 200
         data = response.json()
-        assert data["api_key"] == "real-key"
+        assert data["api_key"] == _mask_secret("real-key")
         assert data["shared_secret"] == _mask_secret("real-secret-value")
         assert data["session_key"] == _mask_secret("sk-real-session")
         assert data["username"] == "testuser"
