@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.v1.schemas.auth import (
     AuthLoginRequest,
@@ -10,6 +10,7 @@ from api.v1.schemas.auth import (
     AuthSettingsResponse,
     EmbyLoginRequest,
     PlexLoginRequest,
+    SsoPromoteSettings,
 )
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
 from repositories.emby_repository import emby_authenticate
@@ -71,7 +72,7 @@ async def setup(
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     token = auth.create_token(body.username, "admin")
-    return AuthLoginResponse(token=token, username=body.username, role="admin")
+    return AuthLoginResponse(token=token, username=body.username, role="admin", is_primary=True)
 
 
 @router.post("/login", response_model=AuthLoginResponse)
@@ -83,7 +84,12 @@ async def login(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     token = auth.create_token(user["username"], user["role"])
-    return AuthLoginResponse(token=token, username=user["username"], role=user["role"])
+    return AuthLoginResponse(
+        token=token,
+        username=user["username"],
+        role=user["role"],
+        is_primary=auth.is_primary_admin(user["username"]),
+    )
 
 
 @router.get("/settings", response_model=AuthSettingsResponse)
@@ -120,7 +126,10 @@ async def emby_login(
     if not user_info:
         raise HTTPException(status_code=401, detail="Invalid Emby credentials")
 
-    user = auth.create_or_get_emby_user(user_info["username"])
+    user = auth.create_or_get_emby_user(
+        user_info["username"],
+        is_sso_admin=bool(user_info.get("is_admin", False)),
+    )
     token = auth.create_token(user["username"], user["role"])
     return AuthLoginResponse(token=token, username=user["username"], role=user["role"])
 
@@ -144,6 +153,28 @@ async def plex_login(
     if not ok:
         raise HTTPException(status_code=403, detail=message)
 
-    user = auth.create_or_get_plex_user(plex_username)
+    is_owner = await plex.is_server_owner(body.plex_token)
+    user = auth.create_or_get_plex_user(plex_username, is_sso_admin=is_owner)
     token = auth.create_token(user["username"], user["role"])
     return AuthLoginResponse(token=token, username=user["username"], role=user["role"])
+
+
+@router.get("/sso-promote", response_model=SsoPromoteSettings)
+async def get_sso_promote(request: Request, auth: AuthService = Depends(get_auth_service)):
+    current = getattr(request.state, "current_user", None)
+    if not current or not auth.is_primary_admin(current["username"]):
+        raise HTTPException(status_code=403, detail="Only the primary admin can manage this setting")
+    return SsoPromoteSettings(enabled=auth.get_sso_admin_promote())
+
+
+@router.put("/sso-promote", response_model=SsoPromoteSettings)
+async def set_sso_promote(
+    body: SsoPromoteSettings = MsgSpecBody(SsoPromoteSettings),
+    request: Request = None,
+    auth: AuthService = Depends(get_auth_service),
+):
+    current = getattr(request.state, "current_user", None)
+    if not current or not auth.is_primary_admin(current["username"]):
+        raise HTTPException(status_code=403, detail="Only the primary admin can manage this setting")
+    auth.set_sso_admin_promote(body.enabled)
+    return SsoPromoteSettings(enabled=auth.get_sso_admin_promote())

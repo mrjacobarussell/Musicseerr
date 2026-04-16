@@ -92,8 +92,21 @@ class AuthService:
             if any(u["username"].lower() == username.lower() for u in users):
                 raise ValueError("Username already taken")
             password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            users.append({"username": username, "password_hash": password_hash, "role": role})
+            is_primary = len(users) == 0
+            users.append({
+                "username": username,
+                "password_hash": password_hash,
+                "role": role,
+                "is_primary": is_primary,
+            })
             self._save_users(users)
+
+    def is_primary_admin(self, username: str) -> bool:
+        """Return True if username is the primary (first-created) admin account."""
+        for u in self._load_users():
+            if u["username"].lower() == username.lower():
+                return bool(u.get("is_primary", False))
+        return False
 
     def _find_user(self, username: str) -> Optional[dict]:
         for u in self._load_users():
@@ -107,16 +120,21 @@ class AuthService:
                 return u
         return None
 
-    def create_or_get_emby_user(self, emby_username: str) -> dict:
-        """Return existing Emby-linked account or create one with role 'user'."""
+    def create_or_get_emby_user(self, emby_username: str, *, is_sso_admin: bool = False) -> dict:
+        """Return existing Emby-linked account or create one.
+
+        If *is_sso_admin* is True and sso_admin_promote is enabled, new accounts
+        get role 'admin'. Existing accounts are not retroactively changed.
+        """
         with self._lock:
             for u in self._load_users():
                 if u["username"].lower() == emby_username.lower() and u.get("auth_provider") == "emby":
                     return u
+            role = "admin" if is_sso_admin and self.get_sso_admin_promote() else "user"
             user: dict = {
                 "username": emby_username,
                 "password_hash": "",
-                "role": "user",
+                "role": role,
                 "auth_provider": "emby",
             }
             users = self._load_users()
@@ -124,16 +142,21 @@ class AuthService:
             self._save_users(users)
             return user
 
-    def create_or_get_plex_user(self, plex_username: str) -> dict:
-        """Return existing Plex-linked account or create one with role 'user'."""
+    def create_or_get_plex_user(self, plex_username: str, *, is_sso_admin: bool = False) -> dict:
+        """Return existing Plex-linked account or create one.
+
+        If *is_sso_admin* is True and sso_admin_promote is enabled, new accounts
+        get role 'admin'. Existing accounts are not retroactively changed.
+        """
         with self._lock:
             existing = self._find_plex_user(plex_username)
             if existing:
                 return existing
+            role = "admin" if is_sso_admin and self.get_sso_admin_promote() else "user"
             user: dict = {
                 "username": plex_username,
                 "password_hash": "",
-                "role": "user",
+                "role": role,
                 "auth_provider": "plex",
             }
             users = self._load_users()
@@ -195,6 +218,24 @@ class AuthService:
                 return False
             self._save_users(new_users)
             return True
+
+    def get_sso_admin_promote(self) -> bool:
+        try:
+            data = read_json(self._settings_path, default={})
+            return bool(data.get("sso_admin_promote", False))
+        except Exception:  # noqa: BLE001
+            return False
+
+    def set_sso_admin_promote(self, enabled: bool) -> None:
+        data: dict = {}
+        if self._settings_path.exists():
+            try:
+                data = read_json(self._settings_path, default={})
+            except Exception:  # noqa: BLE001
+                pass
+        data["sso_admin_promote"] = enabled
+        self._settings_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(self._settings_path, data)
 
     def get_default_request_settings(self) -> dict:
         try:

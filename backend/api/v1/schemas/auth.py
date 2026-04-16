@@ -17,6 +17,11 @@ class AuthLoginResponse(AppStruct):
     token: str
     username: str
     role: str
+    is_primary: bool = False
+
+
+class SsoPromoteSettings(AppStruct):
+    enabled: bool
 
 
 class AuthSetupRequest(AppStruct):

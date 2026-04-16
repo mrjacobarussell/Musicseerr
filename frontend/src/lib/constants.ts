@@ -230,6 +230,7 @@ export const API = {
 	adminUsers: () => '/api/v1/admin/users',
 	adminUser: (username: string) => `/api/v1/admin/users/${encodeURIComponent(username)}`,
 	adminRequestSettings: () => '/api/v1/admin/settings/requests',
+	ssoPromoteSettings: () => '/api/v1/auth/sso-promote',
 	settingsLocalFiles: () => '/api/v1/settings/local-files',
 	settingsLocalFilesVerify: () => '/api/v1/settings/local-files/verify',
 	profile: {

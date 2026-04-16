@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { API } from '$lib/constants';
 	import { api } from '$lib/api/client';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import {
 		Users,
 		Shield,
@@ -38,19 +39,47 @@
 	let deletingUser = $state<string | null>(null);
 	let savingDefaults = $state(false);
 	let defaultsMessage = $state('');
+	let ssoPromote = $state(false);
+	let savingSsoPromote = $state(false);
+	let ssoPromoteMessage = $state('');
 
 	async function load() {
 		loading = true;
 		error = '';
 		try {
-			[users, defaults] = await Promise.all([
+			const reqs: [
+				Promise<User[]>,
+				Promise<DefaultSettings>,
+				Promise<{ enabled: boolean }> | null
+			] = [
 				api.global.get<User[]>(API.adminUsers()),
-				api.global.get<DefaultSettings>(API.adminRequestSettings())
-			]);
+				api.global.get<DefaultSettings>(API.adminRequestSettings()),
+				authStore.isPrimaryAdmin
+					? api.global.get<{ enabled: boolean }>(API.ssoPromoteSettings())
+					: null
+			];
+			const [u, d, sso] = await Promise.all(reqs);
+			users = u;
+			defaults = d;
+			if (sso) ssoPromote = sso.enabled;
 		} catch {
 			error = 'Failed to load users';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function saveSsoPromote() {
+		savingSsoPromote = true;
+		ssoPromoteMessage = '';
+		try {
+			await api.global.put(API.ssoPromoteSettings(), { enabled: ssoPromote });
+			ssoPromoteMessage = 'Saved';
+			setTimeout(() => (ssoPromoteMessage = ''), 2000);
+		} catch {
+			ssoPromoteMessage = 'Failed to save';
+		} finally {
+			savingSsoPromote = false;
 		}
 	}
 
@@ -132,6 +161,53 @@
 </script>
 
 <div class="space-y-6">
+	<!-- SSO admin auto-promote — primary admin only -->
+	{#if authStore.isPrimaryAdmin}
+		<div class="card bg-base-200">
+			<div class="card-body gap-4">
+				<div>
+					<h2 class="card-title text-xl flex items-center gap-2">
+						<Shield class="h-5 w-5" />
+						SSO Admin Auto-Promote
+					</h2>
+					<p class="text-base-content/60 text-sm mt-1">
+						When enabled, Plex server owners and Emby administrators are automatically given the <strong
+							>admin</strong
+						> role in MusicSeerr on their first sign-in. Only applies to new SSO accounts — existing accounts
+						are not affected.
+					</p>
+				</div>
+
+				<div class="flex items-center gap-4">
+					<label class="flex items-center gap-3 cursor-pointer">
+						<input type="checkbox" class="toggle toggle-primary" bind:checked={ssoPromote} />
+						<span class="text-sm"
+							>{ssoPromote
+								? 'Enabled — SSO admins get admin role'
+								: 'Disabled — all SSO users start as regular user'}</span
+						>
+					</label>
+				</div>
+
+				<div class="flex items-center gap-3">
+					<button
+						class="btn btn-primary btn-sm"
+						onclick={() => void saveSsoPromote()}
+						disabled={savingSsoPromote}
+					>
+						{#if savingSsoPromote}
+							<span class="loading loading-spinner loading-xs"></span>
+						{/if}
+						Save
+					</button>
+					{#if ssoPromoteMessage}
+						<span class="text-sm text-success">{ssoPromoteMessage}</span>
+					{/if}
+				</div>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Default quota settings -->
 	<div class="card bg-base-200">
 		<div class="card-body gap-4">

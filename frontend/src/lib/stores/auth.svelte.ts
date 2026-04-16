@@ -10,6 +10,7 @@ function createAuthStore() {
 	let setupRequired = $state(false);
 	let embySsoEnabled = $state(false);
 	let plexSsoEnabled = $state(false);
+	let isPrimaryAdmin = $state(false);
 	let checked = $state(false);
 
 	async function checkStatus() {
@@ -32,10 +33,11 @@ function createAuthStore() {
 		return token;
 	}
 
-	function setToken(t: string, user: string, userRole: string) {
+	function setToken(t: string, user: string, userRole: string, primary = false) {
 		token = t;
 		username = user;
 		role = userRole;
+		isPrimaryAdmin = primary;
 		if (browser) localStorage.setItem(TOKEN_KEY, t);
 	}
 
@@ -43,6 +45,7 @@ function createAuthStore() {
 		token = null;
 		username = null;
 		role = null;
+		isPrimaryAdmin = false;
 		if (browser) localStorage.removeItem(TOKEN_KEY);
 	}
 
@@ -71,6 +74,9 @@ function createAuthStore() {
 		},
 		get plexSsoEnabled() {
 			return plexSsoEnabled;
+		},
+		get isPrimaryAdmin() {
+			return isPrimaryAdmin;
 		},
 		get checked() {
 			return checked;

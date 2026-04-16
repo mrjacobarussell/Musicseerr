@@ -772,6 +772,21 @@ class PlexRepository:
         except Exception as exc:  # noqa: BLE001
             return False, f"Connection failed: {exc}"
 
+    async def is_server_owner(self, user_token: str) -> bool:
+        """Return True if *user_token* belongs to the same account as the configured server token."""
+        if not self._token or not user_token:
+            return False
+        try:
+            owner_info = await self.get_plex_user_info(self._token)
+            user_info = await self.get_plex_user_info(user_token)
+            if not owner_info or not user_info:
+                return False
+            owner_name = (owner_info.get("username") or owner_info.get("friendlyName") or "").lower()
+            user_name = (user_info.get("username") or user_info.get("friendlyName") or "").lower()
+            return bool(owner_name and owner_name == user_name)
+        except Exception:  # noqa: BLE001
+            return False
+
     async def get_plex_user_info(self, user_token: str) -> dict | None:
         """Fetch the Plex account info for a given user token from plex.tv."""
         async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:

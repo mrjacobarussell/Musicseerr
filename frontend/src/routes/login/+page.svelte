@@ -37,7 +37,7 @@
 			}
 
 			const data = await res.json();
-			authStore.setToken(data.token, data.username, data.role);
+			authStore.setToken(data.token, data.username, data.role, data.is_primary ?? false);
 			goto('/');
 		} catch {
 			error = 'Could not connect to the server';
@@ -119,7 +119,7 @@
 				return;
 			}
 			const data = await res.json();
-			authStore.setToken(data.token, data.username, data.role);
+			authStore.setToken(data.token, data.username, data.role, data.is_primary ?? false);
 			goto('/');
 		} catch {
 			error = 'Could not connect to the server';
