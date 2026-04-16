@@ -179,26 +179,30 @@
 				</button>
 			</form>
 
-			<div class="divider text-xs text-base-content/40">or</div>
+			{#if authStore.plexSsoEnabled || authStore.embySsoEnabled}
+				<div class="divider text-xs text-base-content/40">or</div>
+			{/if}
 
-			{#if plexPending}
-				<div class="flex flex-col items-center gap-3">
-					<span class="loading loading-spinner loading-md text-warning"></span>
-					<p class="text-sm text-base-content/60 text-center">
-						Complete sign-in in the Plex window, then return here.
-					</p>
-					<button class="btn btn-ghost btn-sm" onclick={cancelPlexLogin}>Cancel</button>
-				</div>
-			{:else}
-				<button
-					type="button"
-					class="btn btn-outline w-full gap-2"
-					onclick={handlePlexLogin}
-					disabled={loading || embyLoading}
-				>
-					<PlexIcon class="h-5 w-5" />
-					Sign in with Plex
-				</button>
+			{#if authStore.plexSsoEnabled}
+				{#if plexPending}
+					<div class="flex flex-col items-center gap-3">
+						<span class="loading loading-spinner loading-md text-warning"></span>
+						<p class="text-sm text-base-content/60 text-center">
+							Complete sign-in in the Plex window, then return here.
+						</p>
+						<button class="btn btn-ghost btn-sm" onclick={cancelPlexLogin}>Cancel</button>
+					</div>
+				{:else}
+					<button
+						type="button"
+						class="btn btn-outline w-full gap-2"
+						onclick={handlePlexLogin}
+						disabled={loading || embyLoading}
+					>
+						<PlexIcon class="h-5 w-5" />
+						Sign in with Plex
+					</button>
+				{/if}
 			{/if}
 
 			{#if authStore.embySsoEnabled}

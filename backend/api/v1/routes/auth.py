@@ -41,12 +41,14 @@ def get_preferences_service() -> PreferencesService:
 async def auth_status(
     auth: AuthService = Depends(get_auth_service),
     preferences: PreferencesService = Depends(get_preferences_service),
+    plex: PlexRepository = Depends(get_plex_repository),
 ):
     emby = preferences.get_emby_auth_settings()
     return AuthStatusResponse(
         auth_enabled=auth.is_auth_enabled(),
         setup_required=auth.setup_required(),
         emby_enabled=emby.enabled and bool(emby.emby_url),
+        plex_enabled=plex.is_configured(),
     )
 
 

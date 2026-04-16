@@ -5,6 +5,7 @@ class AuthStatusResponse(AppStruct):
     auth_enabled: bool
     setup_required: bool
     emby_enabled: bool = False
+    plex_enabled: bool = False
 
 
 class AuthLoginRequest(AppStruct):

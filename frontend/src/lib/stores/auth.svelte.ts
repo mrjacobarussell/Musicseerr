@@ -9,6 +9,7 @@ function createAuthStore() {
 	let authEnabled = $state(false);
 	let setupRequired = $state(false);
 	let embySsoEnabled = $state(false);
+	let plexSsoEnabled = $state(false);
 	let checked = $state(false);
 
 	async function checkStatus() {
@@ -19,6 +20,7 @@ function createAuthStore() {
 				authEnabled = data.auth_enabled;
 				setupRequired = data.setup_required;
 				embySsoEnabled = data.emby_enabled ?? false;
+				plexSsoEnabled = data.plex_enabled ?? false;
 			}
 		} catch {
 			// backend unreachable — assume no auth
@@ -66,6 +68,9 @@ function createAuthStore() {
 		},
 		get embySsoEnabled() {
 			return embySsoEnabled;
+		},
+		get plexSsoEnabled() {
+			return plexSsoEnabled;
 		},
 		get checked() {
 			return checked;
