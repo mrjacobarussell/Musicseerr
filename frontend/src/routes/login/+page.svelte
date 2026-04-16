@@ -53,7 +53,8 @@
 			const pinRes = await fetch(API.plexAuthPin(), { method: 'POST' });
 			if (!pinRes.ok) throw new Error('Could not start Plex authentication');
 			const { pin_id, auth_url } = await pinRes.json();
-			window.open(auth_url, '_blank', 'noopener');
+			const forwardURL = encodeURIComponent(window.location.origin + '/login');
+			window.open(`${auth_url}&forwardURL=${forwardURL}`, '_blank', 'noopener');
 			await pollPlexPin(pin_id);
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : 'Plex authentication failed';
