@@ -234,6 +234,8 @@ export const API = {
 	ssoPromoteSettings: () => '/api/v1/auth/sso-promote',
 	settingsLocalFiles: () => '/api/v1/settings/local-files',
 	settingsLocalFilesVerify: () => '/api/v1/settings/local-files/verify',
+	settingsMusicbrainz: () => '/api/v1/settings/musicbrainz',
+	settingsMusicbrainzVerify: () => '/api/v1/settings/musicbrainz/verify',
 	profile: {
 		get: () => '/api/v1/profile',
 		update: () => '/api/v1/profile',

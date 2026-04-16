@@ -19,6 +19,9 @@
 	import SettingsAdvanced from '$lib/components/settings/SettingsAdvanced.svelte';
 	import SettingsUsers from '$lib/components/settings/SettingsUsers.svelte';
 	import SettingsEmbyAuth from '$lib/components/settings/SettingsEmbyAuth.svelte';
+	import SettingsMusicBrainz from '$lib/components/settings/SettingsMusicBrainz.svelte';
+	import SettingsAbout from '$lib/components/settings/SettingsAbout.svelte';
+	import { getUpdateCheckQuery } from '$lib/queries/VersionQuery.svelte';
 	import {
 		Settings2,
 		Music,
@@ -30,7 +33,10 @@
 		Radio,
 		Activity,
 		BarChart3,
-		Lock
+		Lock,
+		Info,
+		ArrowUpCircle,
+		Globe
 	} from 'lucide-svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api/client';
@@ -105,6 +111,7 @@
 		{ id: 'youtube', label: 'YouTube', group: 'Library & Sources', icon: Youtube },
 		{ id: 'local-files', label: 'Local Files', group: 'Library & Sources', icon: Headphones },
 		{ id: 'cache', label: 'Cache', group: 'System', icon: Database },
+		{ id: 'musicbrainz', label: 'MusicBrainz', group: 'System', icon: Globe },
 		{ id: 'advanced', label: 'Advanced', group: 'System', icon: Settings },
 		{ id: 'users', label: 'Users & Access', group: 'System', icon: Lock }
 	];
@@ -202,6 +209,8 @@
 					<SettingsLastFm />
 				{:else if activeTab === 'scrobbling'}
 					<SettingsScrobbling />
+				{:else if activeTab === 'musicbrainz'}
+					<SettingsMusicBrainz />
 				{:else if activeTab === 'advanced'}
 					<SettingsAdvanced />
 				{:else if activeTab === 'users'}

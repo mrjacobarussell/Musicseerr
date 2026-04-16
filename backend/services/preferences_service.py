@@ -22,6 +22,7 @@ from api.v1.schemas.settings import (
     PlexConnectionSettings,
     PLEX_TOKEN_MASK,
     EmbyAuthSettings,
+    MusicBrainzConnectionSettings,
 )
 from api.v1.schemas.profile import ProfileSettings
 from api.v1.schemas.advanced_settings import AdvancedSettings
@@ -60,6 +61,7 @@ class PreferencesService:
         self._config_cache: Optional[dict] = None
         self._cache_lock = threading.Lock()
         self._migrate_corrupted_credentials()
+        self._migrate_musicbrainz_settings()
 
     def _migrate_corrupted_credentials(self) -> None:
         """One-time migration: clear any credential values that contain the mask bullet character.
@@ -525,3 +527,31 @@ class PreferencesService:
             config["_internal"] = internal
             self._save_config(config)
             return value
+
+    def get_musicbrainz_connection(self) -> MusicBrainzConnectionSettings:
+        return self._get_section("musicbrainz_settings", MusicBrainzConnectionSettings)
+
+    def save_musicbrainz_connection(self, settings: MusicBrainzConnectionSettings) -> None:
+        try:
+            settings.api_url = settings.api_url.rstrip("/")
+            self._save_section("musicbrainz_settings", settings)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Failed to save MusicBrainz settings: {e}")
+            raise ConfigurationError(f"Failed to save MusicBrainz settings: {e}")
+
+    def _migrate_musicbrainz_settings(self) -> None:
+        """One-time migration of musicbrainz_concurrent_searches from advanced_settings."""
+        try:
+            config = self._load_config()
+            if config.get("musicbrainz_settings") is not None:
+                return
+
+            advanced_data = config.get("advanced_settings", {})
+            old_value = advanced_data.get("musicbrainz_concurrent_searches")
+            if old_value is not None:
+                settings = MusicBrainzConnectionSettings(concurrent_searches=int(old_value))
+                self._save_section("musicbrainz_settings", settings)
+                logger.info(f"Migrated musicbrainz_concurrent_searches={old_value} to musicbrainz_settings")
+        except Exception:  # noqa: BLE001
+            logger.warning("Failed to migrate musicbrainz_concurrent_searches, using defaults")
+            self._save_section("musicbrainz_settings", MusicBrainzConnectionSettings())
