@@ -32,8 +32,6 @@
 	}) as PlexSettingsForm;
 
 	let showToken = $state(false);
-	let oauthPending = $state(false);
-	let oauthUrl = $state<string | null>(null);
 	let libraries = $state<PlexLibrarySection[]>([]);
 	let loadingLibraries = $state(false);
 
@@ -44,58 +42,6 @@
 
 	async function test() {
 		await form.test();
-	}
-
-	async function startOAuth() {
-		oauthPending = true;
-		oauthUrl = null;
-		// Open blank window synchronously on user gesture so popup blocker doesn't block it.
-		const win = window.open('', '_blank');
-		try {
-			const res = await api.global.post<{ pin_id: number; pin_code: string; auth_url: string }>(
-				API.plexAuthPin()
-			);
-			oauthUrl = res.auth_url;
-			if (win && !win.closed) {
-				win.location.href = oauthUrl;
-			}
-			await pollForToken(res.pin_id);
-		} catch {
-			if (win && !win.closed) win.close();
-			oauthPending = false;
-		}
-	}
-
-	async function pollForToken(pinId: number) {
-		const maxAttempts = 60;
-		for (let i = 0; i < maxAttempts; i++) {
-			await new Promise((r) => setTimeout(r, 3000));
-			if (!oauthPending) return;
-			try {
-				const res = await api.global.get<{ completed: boolean; auth_token: string }>(
-					API.plexAuthPoll(pinId)
-				);
-				if (!oauthPending) return;
-				if (res.completed && res.auth_token) {
-					if (form.data) form.data.plex_token = res.auth_token;
-					oauthPending = false;
-					oauthUrl = null;
-					await test();
-					const result = form.testResult as { valid?: boolean } | null;
-					if (result?.valid) await save();
-					return;
-				}
-			} catch {
-				break;
-			}
-		}
-		oauthPending = false;
-		oauthUrl = null;
-	}
-
-	function cancelOAuth() {
-		oauthPending = false;
-		oauthUrl = null;
 	}
 
 	async function fetchLibraries() {
@@ -132,7 +78,6 @@
 
 	onDestroy(() => {
 		form.cleanup();
-		oauthPending = false;
 	});
 </script>
 
@@ -186,27 +131,10 @@
 				</div>
 
 				<div class="flex items-center gap-3">
-					{#if oauthPending}
-						<span class="loading loading-spinner loading-sm"></span>
-						<span class="text-sm text-base-content/70">Finish signing in to Plex to continue.</span>
-						{#if oauthUrl}
-							<a href={oauthUrl} target="_blank" rel="noopener" class="link link-primary text-sm">
-								Open sign-in page
-							</a>
-						{/if}
-						<button type="button" class="btn btn-ghost btn-xs" onclick={cancelOAuth}>
-							Cancel
-						</button>
-					{:else}
-						<button
-							type="button"
-							class="btn btn-sm"
-							disabled
-						>
-							Sign in with Plex
-						</button>
-						<span class="text-sm text-base-content/50">Sign-in temporarily disabled — paste your token above.</span>
-					{/if}
+					<button type="button" class="btn btn-sm" disabled>
+						Sign in with Plex
+					</button>
+					<span class="text-sm text-base-content/50">Sign-in temporarily disabled — paste your token above.</span>
 				</div>
 
 				{#if hasCredentials || libraries.length > 0 || loadingLibraries}
