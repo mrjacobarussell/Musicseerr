@@ -49,14 +49,19 @@
 	async function startOAuth() {
 		oauthPending = true;
 		oauthUrl = null;
+		// Open blank window synchronously on user gesture so popup blocker doesn't block it.
+		const win = window.open('', '_blank');
 		try {
 			const res = await api.global.post<{ pin_id: number; pin_code: string; auth_url: string }>(
 				API.plexAuthPin()
 			);
 			oauthUrl = res.auth_url;
-			window.open(res.auth_url, '_blank', 'noopener');
+			if (win && !win.closed) {
+				win.location.href = oauthUrl;
+			}
 			await pollForToken(res.pin_id);
 		} catch {
+			if (win && !win.closed) win.close();
 			oauthPending = false;
 		}
 	}
