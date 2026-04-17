@@ -229,6 +229,21 @@ class PrimaryMusicSourceSettings(AppStruct):
     source: Literal["listenbrainz", "lastfm"] = "listenbrainz"
 
 
+_OFFICIAL_MB_RATE_LIMIT = 1.0
+_OFFICIAL_MB_CONCURRENT_SEARCHES = 6
+
+
+def is_official_musicbrainz(url: str) -> bool:
+    """Check if the URL points to the official MusicBrainz API."""
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url.strip().rstrip("/"))
+        hostname = (parsed.hostname or "").lower()
+        return hostname in ("musicbrainz.org", "www.musicbrainz.org")
+    except (ValueError, AttributeError):
+        return False
+
+
 class MusicBrainzConnectionSettings(AppStruct):
     api_url: str = "https://musicbrainz.org/ws/2"
     rate_limit: float = 1.0
@@ -239,6 +254,9 @@ class MusicBrainzConnectionSettings(AppStruct):
         if not self.api_url or not self.api_url.startswith(("http://", "https://")):
             self.api_url = "https://musicbrainz.org/ws/2"
         self.api_url = self.api_url.rstrip("/")
+        if is_official_musicbrainz(self.api_url):
+            self.rate_limit = min(self.rate_limit, _OFFICIAL_MB_RATE_LIMIT)
+            self.concurrent_searches = min(self.concurrent_searches, _OFFICIAL_MB_CONCURRENT_SEARCHES)
         if self.rate_limit < 0.1 or self.rate_limit > 50.0:
             raise msgspec.ValidationError("rate_limit must be between 0.1 and 50.0")
         if self.concurrent_searches < 1 or self.concurrent_searches > 30:

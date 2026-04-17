@@ -784,6 +784,13 @@ class SettingsService:
         from repositories.musicbrainz_base import (
             set_mb_api_base, mb_rate_limiter, mb_circuit_breaker, mb_deduplicator,
         )
+        from api.v1.schemas.settings import (
+            is_official_musicbrainz, _OFFICIAL_MB_RATE_LIMIT, _OFFICIAL_MB_CONCURRENT_SEARCHES,
+        )
+
+        if is_official_musicbrainz(settings.api_url):
+            settings.rate_limit = min(settings.rate_limit, _OFFICIAL_MB_RATE_LIMIT)
+            settings.concurrent_searches = min(settings.concurrent_searches, _OFFICIAL_MB_CONCURRENT_SEARCHES)
 
         set_mb_api_base(settings.api_url)
         mb_rate_limiter.update_rate(settings.rate_limit)

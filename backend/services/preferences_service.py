@@ -42,6 +42,23 @@ class PreferencesService:
         self._config_cache: Optional[dict] = None
         self._cache_lock = threading.Lock()
         self._migrate_musicbrainz_settings()
+        self._ensure_instance_id()
+
+    def _ensure_instance_id(self) -> None:
+        """Generate a stable instance ID on first run."""
+        config = self._load_config()
+        if config.get("instance_id"):
+            return
+        import uuid
+        instance_id = str(uuid.uuid4())
+        config = self._load_config().copy()
+        config["instance_id"] = instance_id
+        self._save_config(config)
+        logger.info("Generated new instance ID: %s", instance_id)
+
+    def get_instance_id(self) -> str:
+        config = self._load_config()
+        return config.get("instance_id", "unknown")
 
     def _load_config(self) -> dict:
         with self._cache_lock:

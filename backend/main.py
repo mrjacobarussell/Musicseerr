@@ -67,6 +67,7 @@ async def lifespan(app: FastAPI):
     await init_app_state(app)
     
     preferences_service = get_preferences_service()
+    settings.instance_id = preferences_service.get_instance_id()
     advanced_settings = preferences_service.get_advanced_settings()
 
     cache = get_cache()

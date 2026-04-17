@@ -48,9 +48,27 @@
 		}
 	}
 
+	function isOfficialMusicBrainz(url: string): boolean {
+		try {
+			const hostname = new URL(url.trim()).hostname.toLowerCase();
+			return hostname === 'musicbrainz.org' || hostname === 'www.musicbrainz.org';
+		} catch {
+			return false;
+		}
+	}
+
+	let isOfficialApi = $derived(form.data ? isOfficialMusicBrainz(form.data.api_url) : true);
+
 	let hasPassedTest = $derived(
 		form.testResult != null && (form.testResult as MusicBrainzTestResult).valid === true
 	);
+
+	$effect(() => {
+		if (isOfficialApi && form.data) {
+			if (form.data.rate_limit > 1.0) form.data.rate_limit = 1.0;
+			if (form.data.concurrent_searches > 6) form.data.concurrent_searches = 6;
+		}
+	});
 
 	$effect(() => {
 		form.load();
@@ -90,6 +108,28 @@
 					</p>
 				</div>
 
+				{#if isOfficialApi}
+					<div class="alert alert-info text-sm">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							class="stroke-current shrink-0 w-5 h-5"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+						<span
+							>Rate limit capped for the public MusicBrainz API. Use a self-hosted instance for
+							higher limits.</span
+						>
+					</div>
+				{/if}
+
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
 					<div class="form-control w-full">
 						<label class="label" for="mb-rate-limit">
@@ -99,7 +139,7 @@
 							id="mb-rate-limit"
 							type="number"
 							min="0.1"
-							max="50"
+							max={isOfficialApi ? 1 : 50}
 							step="0.1"
 							bind:value={form.data.rate_limit}
 							class="input w-full"
@@ -118,7 +158,7 @@
 							id="mb-concurrent"
 							type="number"
 							min="1"
-							max="30"
+							max={isOfficialApi ? 6 : 30}
 							bind:value={form.data.concurrent_searches}
 							class="input w-full"
 						/>
