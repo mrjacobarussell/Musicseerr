@@ -201,11 +201,11 @@
 						<button
 							type="button"
 							class="btn btn-sm"
-							style="background-color: rgb(var(--brand-plex)); color: #000;"
-							onclick={startOAuth}
+							disabled
 						>
 							Sign in with Plex
 						</button>
+						<span class="text-sm text-base-content/50">Sign-in temporarily disabled — paste your token above.</span>
 					{/if}
 				</div>
 
