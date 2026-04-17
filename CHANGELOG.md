@@ -18,6 +18,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Plex OAuth login opened a blank tab** — the Plex sign-in popup now includes a `forwardURL` parameter so the browser redirects back to `/login` after authorisation instead of landing on a blank page.
+- **Last.fm showed "Connected" even when the API key was rejected** — the settings panel now silently verifies credentials on load and auto-expands the form with an error banner if the stored key is invalid (e.g. after a key rotation).
+- **Masked credentials being overwritten on Save** — a double-masking bug caused all seven integration credentials (Navidrome password, Plex token, Jellyfin API key, Lidarr API key, ListenBrainz token, Last.fm api\_key, Last.fm shared\_secret) to be permanently corrupted in the database after the first save. Save and verify handlers now detect the masked sentinel value and fall back to the stored credential instead of writing the mask itself.
+- **Route handlers using masked getters for credential resolution** — `update_navidrome_settings`, `update_plex_settings`, and `verify_plex_connection` were resolving the stored password/token through the masked getter, making it impossible for users to recover a corrupted credential by clicking Save. Switched to the `_raw` getters so the real stored value is used.
+- **Library sync saturating the event loop** — background pre-cache phases now use an `asyncio.Semaphore(3)` to cap concurrent HTTP requests regardless of batch size, and the default batch sizes and inter-batch delays have been made more conservative (artist images: 10 → 4, albums: 8 → 4; delays: 0.5 s → 1.5 s / 0.3 s → 1.0 s) to reduce impact on app responsiveness.
 - **Library sync status showing "Failed" while sync is running** — the Last Sync stat now shows "In progress" while `syncStatus.isActive` is true, preventing the stale `last_sync_success: false` from a previous run being displayed during an active sync.
 
 ---
