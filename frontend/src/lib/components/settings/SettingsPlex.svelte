@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createSettingsForm } from '$lib/utils/settingsForm.svelte';
-	import { onMount, onDestroy } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { API } from '$lib/constants';
 	import { api } from '$lib/api/client';
 	import { resetPlexScrobblePreference } from '$lib/player/plexPlaybackApi';
@@ -49,22 +49,14 @@
 	async function startOAuth() {
 		oauthPending = true;
 		oauthUrl = null;
-		// Open a blank window synchronously (direct user gesture = not blocked).
-		// noopener must be omitted so we can navigate the window after the async PIN fetch.
-		const win = window.open('', '_blank');
 		try {
 			const res = await api.global.post<{ pin_id: number; pin_code: string; auth_url: string }>(
 				API.plexAuthPin()
 			);
-			const forwardURL = encodeURIComponent(window.location.href);
-			oauthUrl = `${res.auth_url}&forwardURL=${forwardURL}`;
-			if (win && !win.closed) {
-				win.location.href = oauthUrl;
-			}
-			// oauthUrl is now set so the "Open sign-in page" link is visible as fallback
+			oauthUrl = res.auth_url;
+			window.open(res.auth_url, '_blank', 'noopener');
 			await pollForToken(res.pin_id);
 		} catch {
-			if (win && !win.closed) win.close();
 			oauthPending = false;
 		}
 	}
@@ -124,11 +116,13 @@
 	let hasCredentials = $derived(Boolean(form.data?.plex_url && form.data?.plex_token));
 	let hasLibrarySelected = $derived(Boolean(form.data?.music_library_ids?.length));
 
-	onMount(async () => {
-		await form.load();
-		if (form.data?.plex_url && form.data?.plex_token) {
-			await fetchLibraries();
-		}
+	$effect(() => {
+		(async () => {
+			await form.load();
+			if (form.data?.plex_url && form.data?.plex_token) {
+				await fetchLibraries();
+			}
+		})();
 	});
 
 	onDestroy(() => {
