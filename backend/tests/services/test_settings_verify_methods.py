@@ -41,7 +41,7 @@ async def test_verify_navidrome_success():
     )
 
     mock_repo_instance = MagicMock()
-    mock_repo_instance.ping = AsyncMock(return_value=True)
+    mock_repo_instance.verify_credentials = AsyncMock(return_value=(True, "Connected to Navidrome successfully"))
 
     with patch("infrastructure.validators.validate_service_url"), \
          patch("services.settings_service.get_settings", return_value=MagicMock()), \
@@ -75,7 +75,7 @@ async def test_verify_navidrome_ping_fail():
     )
 
     mock_repo_instance = MagicMock()
-    mock_repo_instance.ping = AsyncMock(return_value=False)
+    mock_repo_instance.verify_credentials = AsyncMock(return_value=(False, "Authentication failed — check your username and password"))
 
     with patch("infrastructure.validators.validate_service_url"), \
          patch("services.settings_service.get_settings", return_value=MagicMock()), \
