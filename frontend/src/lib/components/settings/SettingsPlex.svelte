@@ -56,9 +56,10 @@
 			const res = await api.global.post<{ pin_id: number; pin_code: string; auth_url: string }>(
 				API.plexAuthPin()
 			);
-			oauthUrl = res.auth_url;
+			const forwardURL = encodeURIComponent(window.location.href);
+			oauthUrl = `${res.auth_url}&forwardURL=${forwardURL}`;
 			if (win && !win.closed) {
-				win.location.href = res.auth_url;
+				win.location.href = oauthUrl;
 			}
 			// oauthUrl is now set so the "Open sign-in page" link is visible as fallback
 			await pollForToken(res.pin_id);
