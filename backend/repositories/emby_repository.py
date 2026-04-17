@@ -51,6 +51,31 @@ async def emby_authenticate(url: str, username: str, password: str) -> dict | No
             return None
 
 
+async def emby_get_all_users(url: str, api_key: str) -> list[dict]:
+    """Fetch all users from the Emby server using an admin API key.
+
+    Returns a list of Emby user objects, each with at least 'Name' and 'Policy'.
+    Returns an empty list on error.
+    """
+    base = url.rstrip("/")
+    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
+        try:
+            response = await client.get(
+                f"{base}/Users",
+                headers={
+                    "Accept": "application/json",
+                    "X-Emby-Token": api_key,
+                },
+            )
+            if response.status_code == 200:
+                return response.json()
+            logger.warning("Emby get users returned status %d", response.status_code)
+            return []
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Emby get users error: %s", exc)
+            return []
+
+
 async def emby_verify_server(url: str) -> tuple[bool, str]:
     """Check whether the Emby server at *url* is reachable.
 

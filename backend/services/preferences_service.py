@@ -45,6 +45,7 @@ _CREDENTIAL_FIELDS = [
     ("lastfm_settings", "api_key"),
     ("lastfm_settings", "shared_secret"),
     ("lastfm_settings", "session_key"),
+    ("emby_auth_settings", "emby_api_key"),
 ]
 
 # Top-level credential keys (stored directly in config root, not in a nested section)

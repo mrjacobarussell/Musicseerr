@@ -3,18 +3,27 @@
 	import { API } from '$lib/constants';
 	import { api } from '$lib/api/client';
 	import EmbyIcon from '$lib/components/EmbyIcon.svelte';
-	import { CircleCheck, CircleAlert, Save } from 'lucide-svelte';
+	import { CircleCheck, CircleAlert, Save, RefreshCw } from 'lucide-svelte';
 
 	interface EmbyAuthSettings {
 		emby_url: string;
 		enabled: boolean;
+		emby_api_key: string;
 	}
 
-	let settings = $state<EmbyAuthSettings>({ emby_url: '', enabled: false });
+	interface SyncResult {
+		created: string[];
+		skipped: string[];
+	}
+
+	let settings = $state<EmbyAuthSettings>({ emby_url: '', enabled: false, emby_api_key: '' });
 	let loading = $state(true);
 	let saving = $state(false);
 	let testing = $state(false);
+	let syncing = $state(false);
 	let testResult = $state<{ success: boolean; message: string } | null>(null);
+	let syncResult = $state<SyncResult | null>(null);
+	let syncError = $state('');
 	let saveMessage = $state('');
 
 	async function load() {
@@ -32,6 +41,8 @@
 		saving = true;
 		saveMessage = '';
 		testResult = null;
+		syncResult = null;
+		syncError = '';
 		try {
 			settings = await api.global.put<EmbyAuthSettings>(API.embyAuthSettings(), settings);
 			saveMessage = 'Saved';
@@ -49,12 +60,26 @@
 		try {
 			testResult = await api.global.post<{ success: boolean; message: string }>(
 				API.embyAuthVerify(),
-				{ emby_url: settings.emby_url, enabled: settings.enabled }
+				{ emby_url: settings.emby_url, enabled: settings.enabled, emby_api_key: settings.emby_api_key }
 			);
 		} catch {
 			testResult = { success: false, message: 'Could not reach server' };
 		} finally {
 			testing = false;
+		}
+	}
+
+	async function syncUsers() {
+		syncing = true;
+		syncResult = null;
+		syncError = '';
+		try {
+			syncResult = await api.global.post<SyncResult>(API.embySyncUsers(), {});
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : '';
+			syncError = msg || 'Sync failed';
+		} finally {
+			syncing = false;
 		}
 	}
 
@@ -95,6 +120,19 @@
 					/>
 				</label>
 
+				<label class="form-control">
+					<div class="label">
+						<span class="label-text">API Key</span>
+						<span class="label-text-alt text-base-content/40">Required for user sync</span>
+					</div>
+					<input
+						type="password"
+						class="input input-bordered input-sm"
+						placeholder="Generate in Emby Dashboard → API Keys"
+						bind:value={settings.emby_api_key}
+					/>
+				</label>
+
 				{#if testResult}
 					<div
 						class="flex items-center gap-2 text-sm {testResult.success
@@ -110,7 +148,31 @@
 					</div>
 				{/if}
 
-				<div class="flex items-center gap-2">
+				{#if syncResult}
+					<div class="rounded-box bg-base-100 p-3 text-sm space-y-1">
+						<p class="font-medium">Sync complete</p>
+						<p class="text-success">
+							{syncResult.created.length} user{syncResult.created.length !== 1 ? 's' : ''} imported
+							{#if syncResult.created.length > 0}
+								— {syncResult.created.join(', ')}
+							{/if}
+						</p>
+						{#if syncResult.skipped.length > 0}
+							<p class="text-base-content/50">
+								{syncResult.skipped.length} already existed (skipped)
+							</p>
+						{/if}
+					</div>
+				{/if}
+
+				{#if syncError}
+					<div class="flex items-center gap-2 text-sm text-error">
+						<CircleAlert class="h-4 w-4 shrink-0" />
+						{syncError}
+					</div>
+				{/if}
+
+				<div class="flex flex-wrap items-center gap-2">
 					<button
 						class="btn btn-outline btn-sm"
 						onclick={() => void test()}
@@ -120,6 +182,19 @@
 							<span class="loading loading-spinner loading-xs"></span>
 						{/if}
 						Test Connection
+					</button>
+					<button
+						class="btn btn-outline btn-sm gap-1"
+						onclick={() => void syncUsers()}
+						disabled={syncing || !settings.emby_api_key || !settings.emby_url}
+						title={!settings.emby_api_key ? 'Enter an API key to sync users' : ''}
+					>
+						{#if syncing}
+							<span class="loading loading-spinner loading-xs"></span>
+						{:else}
+							<RefreshCw class="h-3.5 w-3.5" />
+						{/if}
+						Sync Users
 					</button>
 					<button
 						class="btn btn-primary btn-sm gap-1"

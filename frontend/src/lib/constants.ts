@@ -233,6 +233,7 @@ export const API = {
 	plexLogin: () => '/api/v1/auth/plex/login',
 	embyAuthSettings: () => '/api/v1/emby/auth/settings',
 	embyAuthVerify: () => '/api/v1/emby/auth/verify',
+	embySyncUsers: () => '/api/v1/emby/auth/sync-users',
 	embyLogin: () => '/api/v1/auth/emby/login',
 	adminUsers: () => '/api/v1/admin/users',
 	adminUser: (username: string) => `/api/v1/admin/users/${encodeURIComponent(username)}`,

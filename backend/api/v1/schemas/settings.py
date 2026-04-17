@@ -357,9 +357,15 @@ class LidarrMetadataProfilePreferences(AppStruct):
 class EmbyAuthSettings(AppStruct):
     emby_url: str = ""
     enabled: bool = False
+    emby_api_key: str = ""
 
 
 class EmbyVerifyResponse(AppStruct):
     success: bool
     message: str
+
+
+class EmbySyncResult(AppStruct):
+    created: list[str]
+    skipped: list[str]
 
