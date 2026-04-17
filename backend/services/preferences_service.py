@@ -35,12 +35,63 @@ logger = logging.getLogger(__name__)
 T = TypeVar('T', bound=msgspec.Struct)
 
 
+_CREDENTIAL_FIELDS = [
+    # (section_key, field_key) — nested sections
+    ("navidrome_settings", "password"),
+    ("plex_settings", "plex_token"),
+    ("lidarr_connection", "lidarr_api_key"),
+    ("jellyfin_settings", "api_key"),
+    ("listenbrainz_settings", "user_token"),
+    ("lastfm_settings", "api_key"),
+    ("lastfm_settings", "shared_secret"),
+    ("lastfm_settings", "session_key"),
+]
+
+
+def _is_corrupted(value: object) -> bool:
+    """Return True if a stored credential contains the masking bullet character."""
+    return isinstance(value, str) and "\u2022" in value  # U+2022 = •
+
+
 class PreferencesService:
     def __init__(self, settings: Settings):
         self._settings = settings
         self._config_path = settings.config_file_path
         self._config_cache: Optional[dict] = None
         self._cache_lock = threading.Lock()
+        self._migrate_corrupted_credentials()
+
+    def _migrate_corrupted_credentials(self) -> None:
+        """One-time migration: clear any credential values that contain the mask bullet character.
+
+        These got written to the config during a prior masking bug. If found, we clear them
+        to empty strings so the UI shows blank fields and the user can re-enter the real values.
+        """
+        if not self._config_path.exists():
+            return
+        try:
+            config = read_json(self._config_path, default={})
+            if not isinstance(config, dict):
+                return
+            changed = False
+            for section_key, field_key in _CREDENTIAL_FIELDS:
+                section = config.get(section_key)
+                if isinstance(section, dict) and _is_corrupted(section.get(field_key)):
+                    logger.warning(
+                        "Clearing corrupted credential %s.%s (contained mask character)",
+                        section_key, field_key,
+                    )
+                    section[field_key] = ""
+                    changed = True
+            if changed:
+                with self._cache_lock:
+                    self._config_path.parent.mkdir(parents=True, exist_ok=True)
+                    from infrastructure.file_utils import atomic_write_json
+                    atomic_write_json(self._config_path, config)
+                    self._config_cache = config
+                logger.info("Credential migration complete — corrupted values cleared")
+        except Exception as e:  # noqa: BLE001
+            logger.error("Credential migration failed: %s", e)
 
     def _load_config(self) -> dict:
         with self._cache_lock:
