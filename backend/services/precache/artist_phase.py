@@ -91,11 +91,17 @@ class ArtistPhase:
 
         advanced_settings = self._preferences_service.get_advanced_settings()
         batch_size = advanced_settings.batch_artist_images
+        sem = asyncio.Semaphore(3)
+
+        async def cache_artist_throttled(artist: dict, index: int) -> str:
+            async with sem:
+                return await cache_artist(artist, index)
+
         for i in range(0, len(artists), batch_size):
             if status_service.is_cancelled():
                 break
             batch = artists[i:i + batch_size]
-            tasks = [cache_artist(artist, i + idx) for idx, artist in enumerate(batch)]
+            tasks = [cache_artist_throttled(artist, i + idx) for idx, artist in enumerate(batch)]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             processed_mbids = []
             for idx, result in enumerate(results):

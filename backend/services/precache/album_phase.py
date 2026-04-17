@@ -73,13 +73,19 @@ class AlbumPhase:
         metadata_fetched = 0
         covers_fetched = 0
         consecutive_slow_batches = 0
+        sem = asyncio.Semaphore(3)
+
+        async def cache_rg_throttled(rg: str, index: int):
+            async with sem:
+                return await cache_rg(rg, index)
+
         i = 0
         while i < len(release_group_ids):
             if status_service.is_cancelled():
                 break
             batch_start = time.time()
             batch = release_group_ids[i:i + batch_size]
-            tasks = [cache_rg(rg, i + idx) for idx, rg in enumerate(batch)]
+            tasks = [cache_rg_throttled(rg, i + idx) for idx, rg in enumerate(batch)]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             processed_mbids = []
             for idx, result in enumerate(results):
