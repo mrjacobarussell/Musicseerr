@@ -7,7 +7,7 @@ export type PlaybackState =
 	| 'buffering'
 	| 'error';
 
-export type SourceType = 'youtube' | 'local' | 'jellyfin' | 'navidrome' | 'plex';
+export type SourceType = 'youtube' | 'local' | 'jellyfin' | 'navidrome' | 'plex' | 'emby';
 
 export type QueueOrigin = 'context' | 'manual';
 

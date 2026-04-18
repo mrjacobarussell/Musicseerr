@@ -44,6 +44,7 @@ from .repo_providers import (
     get_playlist_repository,
     get_request_history_store,
     get_github_repository,
+    get_emby_repository,
 )
 
 logger = logging.getLogger(__name__)
@@ -628,3 +629,19 @@ def get_version_service() -> "VersionService":
 
     github_repo = get_github_repository()
     return VersionService(github_repo)
+
+
+@singleton
+def get_emby_library_service() -> "EmbyLibraryService":
+    from services.emby_library_service import EmbyLibraryService
+
+    emby_repo = get_emby_repository()
+    return EmbyLibraryService(emby_repo)
+
+
+@singleton
+def get_emby_playback_service() -> "EmbyPlaybackService":
+    from services.emby_playback_service import EmbyPlaybackService
+
+    emby_repo = get_emby_repository()
+    return EmbyPlaybackService(emby_repo)

@@ -27,6 +27,8 @@ export function resolveSourceUrl(item: QueueItem): string | undefined {
 			return withAuthToken(API.stream.jellyfin(item.trackSourceId));
 		case 'plex':
 			return withAuthToken(item.streamUrl ?? API.stream.plex(item.trackSourceId));
+		case 'emby':
+			return withAuthToken(API.stream.emby(item.trackSourceId));
 	}
 }
 
@@ -42,6 +44,8 @@ export function buildPrefetchUrl(item: QueueItem): string | null {
 			return withAuthToken(API.stream.plex(item.trackSourceId));
 		case 'local':
 			return withAuthToken(API.stream.local(item.trackSourceId));
+		case 'emby':
+			return withAuthToken(API.stream.emby(item.trackSourceId));
 		default:
 			return item.streamUrl ?? null;
 	}
@@ -60,6 +64,8 @@ export function buildStreamUrlForSource(
 			return withAuthToken(API.stream.jellyfin(trackSourceId));
 		case 'plex':
 			return withAuthToken(API.stream.plex(trackSourceId));
+		case 'emby':
+			return withAuthToken(API.stream.emby(trackSourceId));
 		default:
 			return undefined;
 	}

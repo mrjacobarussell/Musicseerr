@@ -57,6 +57,10 @@ class HomeIntegrationHelpers:
             and bool(plex_settings.music_library_ids)
         )
 
+    def is_emby_enabled(self) -> bool:
+        emby_settings = self._preferences.get_emby_connection()
+        return emby_settings.enabled and bool(emby_settings.emby_url) and bool(emby_settings.api_key)
+
     def is_lastfm_enabled(self) -> bool:
         return self._preferences.is_lastfm_enabled()
 

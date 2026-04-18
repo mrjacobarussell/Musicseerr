@@ -18,6 +18,7 @@
 	import SettingsMusicSource from '$lib/components/settings/SettingsMusicSource.svelte';
 	import SettingsAdvanced from '$lib/components/settings/SettingsAdvanced.svelte';
 	import SettingsUsers from '$lib/components/settings/SettingsUsers.svelte';
+	import SettingsEmby from '$lib/components/settings/SettingsEmby.svelte';
 	import SettingsEmbyAuth from '$lib/components/settings/SettingsEmbyAuth.svelte';
 	import SettingsMusicBrainz from '$lib/components/settings/SettingsMusicBrainz.svelte';
 	import SettingsAbout from '$lib/components/settings/SettingsAbout.svelte';
@@ -79,6 +80,7 @@
 		| 'jellyfin'
 		| 'navidrome'
 		| 'plex'
+		| 'emby'
 		| 'youtube'
 		| 'localfiles'
 		| 'lidarr'
@@ -88,6 +90,7 @@
 		jellyfin: 'jellyfin',
 		navidrome: 'navidrome',
 		plex: 'plex',
+		emby: 'emby',
 		youtube: 'youtube',
 		'local-files': 'localfiles',
 		'lidarr-connection': 'lidarr'
@@ -104,6 +107,7 @@
 		{ id: 'jellyfin', label: 'Jellyfin', group: 'Media Servers', icon: JellyfinIcon },
 		{ id: 'navidrome', label: 'Navidrome', group: 'Media Servers', icon: NavidromeIcon },
 		{ id: 'plex', label: 'Plex', group: 'Media Servers', icon: PlexIcon },
+		{ id: 'emby', label: 'Emby', group: 'Media Servers', icon: Music },
 		{
 			id: 'lidarr-connection',
 			label: 'Lidarr Connection',
@@ -211,6 +215,8 @@
 					<SettingsNavidrome />
 				{:else if activeTab === 'plex'}
 					<SettingsPlex />
+				{:else if activeTab === 'emby'}
+					<SettingsEmby />
 				{:else if activeTab === 'listenbrainz'}
 					<SettingsListenBrainz />
 				{:else if activeTab === 'youtube'}

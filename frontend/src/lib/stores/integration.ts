@@ -12,6 +12,7 @@ interface IntegrationStatus {
 	youtube_api: boolean;
 	localfiles: boolean;
 	lastfm: boolean;
+	emby: boolean;
 	loaded: boolean;
 }
 
@@ -26,6 +27,7 @@ function createIntegrationStore() {
 		youtube_api: false,
 		localfiles: false,
 		lastfm: false,
+		emby: false,
 		loaded: false
 	});
 	let loadPromise: Promise<void> | null = null;
@@ -49,6 +51,7 @@ function createIntegrationStore() {
 				youtube_api: false,
 				localfiles: false,
 				lastfm: false,
+				emby: false,
 				loaded: false
 			});
 		},

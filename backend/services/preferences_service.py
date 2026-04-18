@@ -22,6 +22,7 @@ from api.v1.schemas.settings import (
     PlexConnectionSettings,
     PLEX_TOKEN_MASK,
     EmbyAuthSettings,
+    EmbyConnectionSettings,
     MusicBrainzConnectionSettings,
 )
 from api.v1.schemas.profile import ProfileSettings
@@ -46,6 +47,7 @@ _CREDENTIAL_FIELDS = [
     ("lastfm_settings", "shared_secret"),
     ("lastfm_settings", "session_key"),
     ("emby_auth_settings", "emby_api_key"),
+    ("emby_connection", "api_key"),
 ]
 
 # Top-level credential keys (stored directly in config root, not in a nested section)
@@ -499,6 +501,34 @@ class PreferencesService:
         except Exception as e:  # noqa: BLE001
             logger.error("Failed to save profile settings: %s", e)
             raise ConfigurationError(f"Failed to save profile settings: {e}")
+
+    def get_emby_connection(self) -> EmbyConnectionSettings:
+        config = self._load_config()
+        emby_data = config.get("emby_connection", {})
+        return EmbyConnectionSettings(
+            emby_url=emby_data.get("emby_url", "http://emby:8096"),
+            api_key=emby_data.get("api_key", ""),
+            user_id=emby_data.get("user_id", ""),
+            enabled=emby_data.get("enabled", False),
+        )
+
+    def save_emby_connection(self, settings: EmbyConnectionSettings) -> None:
+        try:
+            config = self._load_config().copy()
+            current_data = config.get("emby_connection", {})
+            api_key = settings.api_key
+            if api_key.startswith(LASTFM_SECRET_MASK):
+                api_key = current_data.get("api_key", "")
+            config["emby_connection"] = {
+                "emby_url": settings.emby_url,
+                "api_key": api_key,
+                "user_id": settings.user_id,
+                "enabled": settings.enabled,
+            }
+            self._save_config(config)
+        except Exception as e:  # noqa: BLE001
+            logger.error("Failed to save Emby connection settings: %s", e)
+            raise ConfigurationError(f"Failed to save Emby connection settings: {e}")
 
     def get_emby_auth_settings(self) -> EmbyAuthSettings:
         return self._get_section("emby_auth_settings", EmbyAuthSettings)

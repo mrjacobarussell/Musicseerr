@@ -485,6 +485,35 @@
 								</SidebarServiceHint>
 							{/if}
 
+							{#if integrations.current.emby}
+								<li>
+									<a
+										href="/library/emby"
+										class="is-drawer-close:tooltip is-drawer-close:tooltip-right"
+										data-tip="Emby"
+									>
+										<div class="relative inline-flex">
+											<svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="color: rgb(82 186 82)">
+												<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+											</svg>
+											{#if nowPlayingMerged.isSourcePlaying('emby')}
+												<span class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+											{/if}
+										</div>
+										<span class="is-drawer-close:hidden">Emby</span>
+										{#if nowPlayingMerged.isSourcePlaying('emby')}
+											<div class="now-playing-bars now-playing-bars--sm ml-auto is-drawer-close:hidden">
+												<span></span><span></span><span></span>
+											</div>
+										{/if}
+									</a>
+								</li>
+							{:else if integrations.current.loaded}
+								<SidebarServiceHint label="Emby" settingsTab="emby">
+									{#snippet icon()}<svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="color: rgb(82 186 82)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>{/snippet}
+								</SidebarServiceHint>
+							{/if}
+
 							{#if integrations.current.localfiles}
 								<li>
 									<a

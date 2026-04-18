@@ -274,3 +274,18 @@ def get_github_repository() -> "GitHubRepository":
     cache = get_cache()
     http_client = _get_configured_http_client()
     return GitHubRepository(http_client, cache)
+
+
+@singleton
+def get_emby_repository() -> "EmbyRepository":
+    from repositories.emby_repository import EmbyRepository
+
+    http_client = _get_configured_http_client()
+    preferences = get_preferences_service()
+    emby_settings = preferences.get_emby_connection()
+    return EmbyRepository(
+        http_client=http_client,
+        base_url=emby_settings.emby_url if emby_settings.enabled else "",
+        api_key=emby_settings.api_key if emby_settings.enabled else "",
+        user_id=emby_settings.user_id if emby_settings.enabled else "",
+    )

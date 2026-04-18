@@ -16,6 +16,7 @@ class IntegrationStatus(AppStruct):
     navidrome: bool = False
     youtube_api: bool = False
     plex: bool = False
+    emby: bool = False
 
 
 class StatusReport(AppStruct):

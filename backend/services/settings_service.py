@@ -791,3 +791,21 @@ class SettingsService:
             total += await self._cache.clear_prefix(prefix)
         if total:
             logger.info(f"Cleared {total} MusicBrainz cache entries after settings change")
+
+    async def on_emby_settings_changed(self, enabled: bool = False) -> None:
+        """Full cache/state reset when Emby music source settings change."""
+        from core.dependencies import (
+            get_emby_repository,
+            get_emby_library_service,
+            get_emby_playback_service,
+            get_home_service,
+            get_home_charts_service,
+        )
+        get_emby_repository.cache_clear()
+        get_emby_library_service.cache_clear()
+        get_emby_playback_service.cache_clear()
+        get_home_service.cache_clear()
+        get_home_charts_service.cache_clear()
+        await self.clear_home_cache()
+        await self.clear_source_resolution_cache()
+        logger.info("Emby settings change: all caches/singletons reset")

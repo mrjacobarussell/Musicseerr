@@ -14,6 +14,11 @@ import {
 	startSession as startJellyfinSession
 } from '$lib/player/jellyfinPlaybackApi';
 import {
+	reportProgress as reportEmbyProgress,
+	reportStop as reportEmbyStop,
+	startSession as startEmbySession
+} from '$lib/player/embyPlaybackApi';
+import {
 	reportNavidromeScrobble,
 	reportNavidromeNowPlaying,
 	reportNavidromeStopped
@@ -73,6 +78,8 @@ const MAX_HISTORY_LENGTH = 3;
 const SESSION_PERSIST_INTERVAL_MS = 5000;
 const JELLYFIN_REPORT_INTERVAL_MS = 10_000;
 const MAX_JELLYFIN_REPORT_FAILURES = 3;
+const EMBY_REPORT_INTERVAL_MS = 10_000;
+const MAX_EMBY_REPORT_FAILURES = 3;
 
 function createPlayerStore() {
 	let currentSource = $state<PlaybackSource | null>(null);
@@ -121,6 +128,11 @@ function createPlayerStore() {
 		JELLYFIN_REPORT_INTERVAL_MS,
 		MAX_JELLYFIN_REPORT_FAILURES
 	);
+	const embyProgressReporter = createProgressReporter(
+		reportEmbyProgress,
+		EMBY_REPORT_INTERVAL_MS,
+		MAX_EMBY_REPORT_FAILURES
+	);
 	const handleBeforeUnload = createBeforeUnloadHandler(
 		() => ({ jellyfinItem: getJellyfinItem(), currentItem: queue[currentIndex] ?? null, progress }),
 		API.stream.jellyfinStop,
@@ -137,6 +149,10 @@ function createPlayerStore() {
 	function getJellyfinItem(): QueueItem | null {
 		const item = queue[currentIndex];
 		return item?.sourceType === 'jellyfin' ? item : null;
+	}
+	function getEmbyItem(): QueueItem | null {
+		const item = queue[currentIndex];
+		return item?.sourceType === 'emby' ? item : null;
 	}
 	function getCurrentItem(): QueueItem | null {
 		return queue[currentIndex] ?? null;
@@ -157,10 +173,13 @@ function createPlayerStore() {
 	}
 	async function stopPreviousSession(item: QueueItem | null, posSeconds: number): Promise<void> {
 		progressReporter.stop();
+		embyProgressReporter.stop();
 		unregisterBeforeUnload();
 		if (!item) return;
 		if (item.sourceType === 'jellyfin' && item.playSessionId) {
 			await reportJellyfinStop(item.trackSourceId, item.playSessionId, posSeconds);
+		} else if (item.sourceType === 'emby' && item.playSessionId) {
+			await reportEmbyStop(item.trackSourceId, item.playSessionId, posSeconds);
 		} else if (item.sourceType === 'navidrome') {
 			void reportNavidromeStopped(item.trackSourceId);
 		} else if (item.sourceType === 'plex' && item.plexRatingKey) {
@@ -183,6 +202,7 @@ function createPlayerStore() {
 		shuffleEnabled = false;
 		consecutiveErrors = 0;
 		progressReporter.stop();
+		embyProgressReporter.stop();
 		unregisterBeforeUnload();
 		storeSessionData(null);
 	}
@@ -215,6 +235,13 @@ function createPlayerStore() {
 				loadUrl: url
 			};
 		}
+		if (item.sourceType === 'emby') {
+			isSeekable = true;
+			return {
+				source: createPlaybackSource('emby', { url: url!, seekable: true }),
+				loadUrl: url
+			};
+		}
 		isSeekable = true;
 		return {
 			source: createPlaybackSource('jellyfin', { url: url!, seekable: true }),
@@ -231,6 +258,21 @@ function createPlayerStore() {
 			uq[index] = { ...uq[index], playSessionId };
 			queue = uq;
 			registerBeforeUnload();
+		} catch {
+			const uq = [...queue];
+			uq[index] = { ...uq[index], playSessionId: '' };
+			queue = uq;
+		}
+	}
+
+	async function startEmbyPlayback(index: number): Promise<void> {
+		const item = queue[index];
+		if (!item || item.sourceType !== 'emby') return;
+		try {
+			const playSessionId = await startEmbySession(item.trackSourceId, item.playSessionId);
+			const uq = [...queue];
+			uq[index] = { ...uq[index], playSessionId };
+			queue = uq;
 		} catch {
 			const uq = [...queue];
 			uq[index] = { ...uq[index], playSessionId: '' };
@@ -271,6 +313,7 @@ function createPlayerStore() {
 		source.setVolume(volume);
 		try {
 			if ((queue[index] ?? item).sourceType === 'jellyfin') await startJellyfinPlayback(index);
+			if ((queue[index] ?? item).sourceType === 'emby') await startEmbyPlayback(index);
 			await source.load({
 				trackSourceId: (queue[index] ?? item).trackSourceId,
 				url: resolvedUrl,
@@ -325,12 +368,21 @@ function createPlayerStore() {
 						progress,
 						isPaused: playbackState !== 'playing'
 					}));
+				if (getEmbyItem())
+					embyProgressReporter.start(() => ({
+						jellyfinItem: getEmbyItem(),
+						progress,
+						isPaused: playbackState !== 'playing'
+					}));
 				prefetchNext();
 			}
 			if (state === 'paused') {
 				const jf = getJellyfinItem();
 				if (jf?.playSessionId)
 					void reportJellyfinProgress(jf.trackSourceId, jf.playSessionId, progress, true);
+				const em = getEmbyItem();
+				if (em?.playSessionId)
+					void reportEmbyProgress(em.trackSourceId, em.playSessionId, progress, true);
 			}
 			if (state === 'ended') {
 				const endedItem = getCurrentItem();
@@ -665,6 +717,9 @@ function createPlayerStore() {
 			const jf = getJellyfinItem();
 			if (jf?.playSessionId)
 				void reportJellyfinProgress(jf.trackSourceId, jf.playSessionId, progress, true);
+			const em = getEmbyItem();
+			if (em?.playSessionId)
+				void reportEmbyProgress(em.trackSourceId, em.playSessionId, progress, true);
 			const item = getCurrentItem();
 			if (item?.sourceType === 'plex' && item.plexRatingKey)
 				void reportPlexStopped(item.plexRatingKey);
@@ -678,6 +733,9 @@ function createPlayerStore() {
 				const jf = getJellyfinItem();
 				if (jf?.playSessionId)
 					void reportJellyfinProgress(jf.trackSourceId, jf.playSessionId, progress, true);
+				const em = getEmbyItem();
+				if (em?.playSessionId)
+					void reportEmbyProgress(em.trackSourceId, em.playSessionId, progress, true);
 				const item = getCurrentItem();
 				if (item?.sourceType === 'plex' && item.plexRatingKey)
 					void reportPlexStopped(item.plexRatingKey);

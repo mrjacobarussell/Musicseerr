@@ -1501,3 +1501,75 @@ export type JellyfinFilterFacets = {
 	tags: string[];
 	studios: string[];
 };
+
+export type EmbyTrackInfo = {
+	emby_id: string;
+	title: string;
+	track_number: number;
+	disc_number?: number;
+	duration_seconds: number;
+	album_name: string;
+	artist_name: string;
+	album_id?: string;
+	codec?: string | null;
+	bitrate?: number | null;
+	image_url?: string | null;
+};
+
+export type EmbyAlbumSummary = {
+	emby_id: string;
+	name: string;
+	artist_name: string;
+	year?: number | null;
+	track_count: number;
+	image_url?: string | null;
+};
+
+export type EmbyAlbumDetail = {
+	emby_id: string;
+	name: string;
+	artist_name: string;
+	year?: number | null;
+	track_count: number;
+	image_url?: string | null;
+	tracks: EmbyTrackInfo[];
+};
+
+export type EmbyArtistSummary = {
+	emby_id: string;
+	name: string;
+	image_url?: string | null;
+	album_count: number;
+};
+
+export type EmbyArtistDetail = {
+	emby_id: string;
+	name: string;
+	image_url?: string | null;
+	albums: EmbyAlbumSummary[];
+};
+
+export type EmbyLibraryStats = {
+	total_tracks: number;
+	total_albums: number;
+	total_artists: number;
+};
+
+export type EmbyHubResponse = {
+	recently_added: EmbyAlbumSummary[];
+	stats: EmbyLibraryStats;
+};
+
+export type EmbyPaginatedResponse = {
+	items: EmbyAlbumSummary[];
+	total: number;
+	limit: number;
+	offset: number;
+};
+
+export type EmbyArtistPaginatedResponse = {
+	items: EmbyArtistSummary[];
+	total: number;
+	limit: number;
+	offset: number;
+};

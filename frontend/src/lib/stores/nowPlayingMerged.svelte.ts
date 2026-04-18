@@ -3,12 +3,13 @@ import { playerStore } from '$lib/stores/player.svelte';
 import type { NowPlayingSession } from '$lib/types';
 import { SvelteMap } from 'svelte/reactivity';
 
-type SourceKey = 'jellyfin' | 'navidrome' | 'plex';
+type SourceKey = 'jellyfin' | 'navidrome' | 'plex' | 'emby';
 
 const GRACE_MS: Record<SourceKey, number> = {
 	jellyfin: 30_000,
 	navidrome: 180_000,
-	plex: 30_000
+	plex: 30_000,
+	emby: 30_000
 };
 
 type OwnedEntry = { track: string; idleSince: number };
@@ -20,7 +21,7 @@ function buildLocalSession(): NowPlayingSession | null {
 	if (!np) return null;
 
 	const src = np.sourceType;
-	if (src !== 'jellyfin' && src !== 'navidrome' && src !== 'plex') return null;
+	if (src !== 'jellyfin' && src !== 'navidrome' && src !== 'plex' && src !== 'emby') return null;
 
 	return {
 		id: `local-${src}-${np.trackSourceId ?? np.albumId}`,

@@ -36,6 +36,7 @@ from .repo_providers import (  # noqa: F401
     get_playlist_repository,
     get_request_history_store,
     get_github_repository,
+    get_emby_repository,
 )
 
 from .service_providers import (  # noqa: F401
@@ -70,6 +71,8 @@ from .service_providers import (  # noqa: F401
     get_plex_library_service,
     get_plex_playback_service,
     get_version_service,
+    get_emby_library_service,
+    get_emby_playback_service,
 )
 
 from .type_aliases import (  # noqa: F401
@@ -120,6 +123,9 @@ from .type_aliases import (  # noqa: F401
     CacheStatusServiceDep,
     GitHubRepositoryDep,
     VersionServiceDep,
+    EmbyRepositoryDep,
+    EmbyLibraryServiceDep,
+    EmbyPlaybackServiceDep,
 )
 
 from .auth_providers import get_auth_service  # noqa: F401

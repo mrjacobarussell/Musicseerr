@@ -23,6 +23,7 @@ from repositories.playlist_repository import PlaylistRepository
 from repositories.navidrome_repository import NavidromeRepository
 from repositories.plex_repository import PlexRepository
 from repositories.github_repository import GitHubRepository
+from repositories.emby_repository import EmbyRepository
 from services.preferences_service import PreferencesService
 from services.search_service import SearchService
 from services.search_enrichment_service import SearchEnrichmentService
@@ -53,6 +54,8 @@ from services.lastfm_auth_service import LastFmAuthService
 from services.scrobble_service import ScrobbleService
 from services.cache_status_service import CacheStatusService
 from services.version_service import VersionService
+from services.emby_library_service import EmbyLibraryService
+from services.emby_playback_service import EmbyPlaybackService
 
 from .cache_providers import (
     get_cache,
@@ -75,8 +78,11 @@ from .repo_providers import (
     get_navidrome_repository,
     get_plex_repository,
     get_github_repository,
+    get_emby_repository,
 )
 from .service_providers import (
+    get_emby_library_service,
+    get_emby_playback_service,
     get_search_service,
     get_search_enrichment_service,
     get_artist_service,
@@ -155,3 +161,6 @@ PlexPlaybackServiceDep = Annotated[PlexPlaybackService, Depends(get_plex_playbac
 CacheStatusServiceDep = Annotated[CacheStatusService, Depends(get_cache_status_service)]
 GitHubRepositoryDep = Annotated[GitHubRepository, Depends(get_github_repository)]
 VersionServiceDep = Annotated[VersionService, Depends(get_version_service)]
+EmbyRepositoryDep = Annotated[EmbyRepository, Depends(get_emby_repository)]
+EmbyLibraryServiceDep = Annotated[EmbyLibraryService, Depends(get_emby_library_service)]
+EmbyPlaybackServiceDep = Annotated[EmbyPlaybackService, Depends(get_emby_playback_service)]

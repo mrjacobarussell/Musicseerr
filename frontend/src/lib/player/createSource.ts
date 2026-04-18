@@ -24,6 +24,9 @@ export function createPlaybackSource(type: SourceType, opts?: NativeSourceOption
 		case 'plex':
 			if (!opts) throw new Error('Plex playback source requires url and seekable options');
 			return new NativeAudioSource('plex', opts);
+		case 'emby':
+			if (!opts) throw new Error('Emby playback source requires url and seekable options');
+			return new NativeAudioSource('emby', opts);
 		default: {
 			const _exhaustive: never = type;
 			throw new Error(`Unknown source type: ${_exhaustive}`);

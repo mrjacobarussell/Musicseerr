@@ -10,6 +10,7 @@ from api.v1.schemas.stream import (
     StopReportRequest,
 )
 from core.dependencies import (
+    get_emby_playback_service,
     get_jellyfin_playback_service,
     get_local_files_service,
     get_navidrome_playback_service,
@@ -17,6 +18,7 @@ from core.dependencies import (
 )
 from core.exceptions import ExternalServiceError, PlaybackNotAllowedError, ResourceNotFoundError
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
+from services.emby_playback_service import EmbyPlaybackService
 from services.jellyfin_playback_service import JellyfinPlaybackService
 from services.local_files_service import LocalFilesService
 from services.navidrome_playback_service import NavidromePlaybackService
@@ -296,3 +298,99 @@ async def plex_stopped(
 ) -> dict[str, str]:
     ok = await playback_service.report_stopped(rating_key)
     return {"status": "ok" if ok else "error"}
+
+
+@router.get("/emby/{item_id}")
+async def stream_emby_audio(
+    item_id: str,
+    request: Request,
+    playback_service: EmbyPlaybackService = Depends(get_emby_playback_service),
+) -> StreamingResponse:
+    try:
+        range_header = request.headers.get("Range")
+        return await playback_service.proxy_stream(item_id, range_header=range_header)
+    except ResourceNotFoundError:
+        raise HTTPException(status_code=404, detail="Audio item not found")
+    except PlaybackNotAllowedError as exc:
+        logger.warning("Emby playback not allowed for %s: %s", item_id, exc)
+        raise HTTPException(status_code=403, detail="Playback not allowed")
+    except ExternalServiceError as exc:
+        if "416" in str(exc):
+            raise HTTPException(status_code=416, detail="Range not satisfiable")
+        raise HTTPException(status_code=502, detail="Failed to stream from Emby")
+
+
+@router.head("/emby/{item_id}")
+async def head_emby_audio(
+    item_id: str,
+    playback_service: EmbyPlaybackService = Depends(get_emby_playback_service),
+) -> Response:
+    try:
+        return await playback_service.proxy_head(item_id)
+    except ResourceNotFoundError:
+        raise HTTPException(status_code=404, detail="Audio item not found")
+    except PlaybackNotAllowedError as exc:
+        logger.warning("Emby playback not allowed for %s: %s", item_id, exc)
+        raise HTTPException(status_code=403, detail="Playback not allowed")
+    except ExternalServiceError as exc:
+        logger.error("Emby head stream error for %s: %s", item_id, exc)
+        raise HTTPException(status_code=502, detail="Failed to resolve Emby stream")
+
+
+@router.post("/emby/{item_id}/start", response_model=PlaybackSessionResponse)
+async def start_emby_playback(
+    item_id: str,
+    body: StartPlaybackRequest | None = Body(default=None),
+    playback_service: EmbyPlaybackService = Depends(get_emby_playback_service),
+) -> PlaybackSessionResponse:
+    try:
+        play_session_id = await playback_service.start_playback(
+            item_id,
+            play_session_id=body.play_session_id if body else None,
+        )
+        return PlaybackSessionResponse(play_session_id=play_session_id, item_id=item_id)
+    except ResourceNotFoundError:
+        raise HTTPException(status_code=404, detail="Item not found")
+    except PlaybackNotAllowedError as exc:
+        logger.warning("Emby playback not allowed for %s: %s", item_id, exc)
+        raise HTTPException(status_code=403, detail="Playback not allowed")
+    except ExternalServiceError as exc:
+        logger.error("Failed to start Emby playback for %s: %s", item_id, exc)
+        raise HTTPException(status_code=502, detail="Failed to start Emby playback")
+
+
+@router.post("/emby/{item_id}/progress", status_code=204)
+async def report_emby_progress(
+    item_id: str,
+    body: ProgressReportRequest = MsgSpecBody(ProgressReportRequest),
+    playback_service: EmbyPlaybackService = Depends(get_emby_playback_service),
+) -> Response:
+    try:
+        await playback_service.report_progress(
+            item_id=item_id,
+            play_session_id=body.play_session_id,
+            position_seconds=body.position_seconds,
+            is_paused=body.is_paused,
+        )
+        return Response(status_code=204)
+    except ExternalServiceError as exc:
+        logger.warning("Emby progress report failed for %s: %s", item_id, exc)
+        raise HTTPException(status_code=502, detail="Failed to report progress")
+
+
+@router.post("/emby/{item_id}/stop", status_code=204)
+async def stop_emby_playback(
+    item_id: str,
+    body: StopReportRequest = MsgSpecBody(StopReportRequest),
+    playback_service: EmbyPlaybackService = Depends(get_emby_playback_service),
+) -> Response:
+    try:
+        await playback_service.stop_playback(
+            item_id=item_id,
+            play_session_id=body.play_session_id,
+            position_seconds=body.position_seconds,
+        )
+        return Response(status_code=204)
+    except ExternalServiceError as exc:
+        logger.warning("Emby stop report failed for %s: %s", item_id, exc)
+        raise HTTPException(status_code=502, detail="Failed to report playback stop")

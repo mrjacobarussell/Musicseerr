@@ -88,6 +88,7 @@ class HomeService:
             lastfm=self._helpers.is_lastfm_enabled(),
             navidrome=self._helpers.is_navidrome_enabled(),
             plex=self._helpers.is_plex_enabled(),
+            emby=self._helpers.is_emby_enabled(),
         )
 
     async def get_genre_artist(

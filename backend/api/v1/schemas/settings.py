@@ -369,3 +369,34 @@ class EmbySyncResult(AppStruct):
     created: list[str]
     skipped: list[str]
 
+
+class EmbyConnectionSettings(AppStruct):
+    emby_url: str = "http://emby:8096"
+    api_key: str = ""
+    user_id: str = ""
+    enabled: bool = False
+
+    def __post_init__(self) -> None:
+        self.emby_url = self.emby_url.rstrip("/") if self.emby_url else ""
+
+
+class EmbyConnectionSettingsResponse(AppStruct):
+    emby_url: str = ""
+    api_key: str = ""
+    user_id: str = ""
+    enabled: bool = False
+
+    @classmethod
+    def from_settings(cls, s: "EmbyConnectionSettings") -> "EmbyConnectionSettingsResponse":
+        return cls(
+            emby_url=s.emby_url,
+            api_key=_mask_secret(s.api_key),
+            user_id=s.user_id,
+            enabled=s.enabled,
+        )
+
+
+class EmbyVerifyConnectionResponse(AppStruct):
+    success: bool
+    message: str
+

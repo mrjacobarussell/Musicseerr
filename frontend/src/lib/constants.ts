@@ -17,7 +17,9 @@ export const CACHE_KEY_GROUPS = {
 		NAVIDROME_ALBUMS_LIST: 'musicseerr_navidrome_albums_list',
 		PLEX_SIDEBAR: 'musicseerr_plex_sidebar',
 		PLEX_ALBUMS_LIST: 'musicseerr_plex_albums_list',
-		LOCAL_FILES_ALBUMS_LIST: 'musicseerr_local_files_albums_list'
+		LOCAL_FILES_ALBUMS_LIST: 'musicseerr_local_files_albums_list',
+		EMBY_SIDEBAR: 'musicseerr_emby_sidebar',
+		EMBY_ALBUMS_LIST: 'musicseerr_emby_albums_list'
 	},
 	detail: {
 		ALBUM_BASIC_CACHE: 'musicseerr_album_basic_cache',
@@ -71,7 +73,9 @@ export const CACHE_TTL_GROUPS = {
 		PLEX_SIDEBAR: 2 * 60 * 1000,
 		PLEX_ALBUMS_LIST: 2 * 60 * 1000,
 		LOCAL_FILES_ALBUMS_LIST: 2 * 60 * 1000,
-		PLAYLIST_SOURCES: 15 * 60 * 1000
+		PLAYLIST_SOURCES: 15 * 60 * 1000,
+		EMBY_SIDEBAR: 2 * 60 * 1000,
+		EMBY_ALBUMS_LIST: 2 * 60 * 1000
 	},
 	detail: {
 		ALBUM_DETAIL_BASIC: 5 * 60 * 1000,
@@ -243,6 +247,21 @@ export const API = {
 	settingsLocalFilesVerify: () => '/api/v1/settings/local-files/verify',
 	settingsMusicbrainz: () => '/api/v1/settings/musicbrainz',
 	settingsMusicbrainzVerify: () => '/api/v1/settings/musicbrainz/verify',
+	settingsEmby: () => '/api/v1/settings/emby',
+	settingsEmbyVerify: () => '/api/v1/settings/emby/verify',
+	embyLibrary: {
+		hub: () => '/api/v1/emby/hub',
+		albums: (limit = 50, offset = 0, sortBy = 'SortName', sortOrder = 'Ascending') =>
+			`/api/v1/emby/albums?limit=${limit}&offset=${offset}&sort_by=${sortBy}&sort_order=${sortOrder}`,
+		albumDetail: (id: string) => `/api/v1/emby/albums/${id}`,
+		artists: (limit = 50, offset = 0, search = '') => {
+			let url = `/api/v1/emby/artists?limit=${limit}&offset=${offset}`;
+			if (search) url += `&search=${encodeURIComponent(search)}`;
+			return url;
+		},
+		artistDetail: (id: string) => `/api/v1/emby/artists/${id}`,
+		image: (id: string, size = 500) => `/api/v1/emby/image/${id}?size=${size}`
+	},
 	profile: {
 		get: () => '/api/v1/profile',
 		update: () => '/api/v1/profile',
@@ -279,7 +298,11 @@ export const API = {
 		plexScrobble: (ratingKey: string) => `/api/v1/stream/plex/${ratingKey}/scrobble`,
 		plexNowPlaying: (ratingKey: string) => `/api/v1/stream/plex/${ratingKey}/now-playing`,
 		plexStopped: (ratingKey: string) => `/api/v1/stream/plex/${ratingKey}/stopped`,
-		local: (trackId: number | string) => `/api/v1/stream/local/${trackId}`
+		local: (trackId: number | string) => `/api/v1/stream/local/${trackId}`,
+		emby: (itemId: string) => `/api/v1/stream/emby/${itemId}`,
+		embyStart: (itemId: string) => `/api/v1/stream/emby/${itemId}/start`,
+		embyProgress: (itemId: string) => `/api/v1/stream/emby/${itemId}/progress`,
+		embyStop: (itemId: string) => `/api/v1/stream/emby/${itemId}/stop`
 	},
 	jellyfinLibrary: {
 		albumMatch: (mbid: string) => `/api/v1/jellyfin/albums/match/${mbid}`,

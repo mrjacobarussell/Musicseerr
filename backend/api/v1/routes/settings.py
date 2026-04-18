@@ -32,6 +32,9 @@ from api.v1.schemas.settings import (
     PlexConnectionSettings,
     PlexConnectionSettingsResponse,
     PlexVerifyResponse,
+    EmbyConnectionSettings,
+    EmbyConnectionSettingsResponse,
+    EmbyVerifyConnectionResponse,
     _is_masked,
     MusicBrainzConnectionSettings,
 )
@@ -366,6 +369,51 @@ async def get_plex_libraries(
     except Exception as e:
         logger.exception("Failed to fetch Plex libraries: %s", e)
         raise HTTPException(status_code=502, detail="Could not fetch libraries from Plex")
+
+
+@router.get("/emby", response_model=EmbyConnectionSettingsResponse)
+async def get_emby_settings(
+    preferences_service: PreferencesService = Depends(get_preferences_service),
+):
+    return EmbyConnectionSettingsResponse.from_settings(preferences_service.get_emby_connection())
+
+
+@router.put("/emby", response_model=EmbyConnectionSettingsResponse)
+async def update_emby_settings(
+    settings: EmbyConnectionSettings = MsgSpecBody(EmbyConnectionSettings),
+    preferences_service: PreferencesService = Depends(get_preferences_service),
+    settings_service: SettingsService = Depends(get_settings_service),
+):
+    try:
+        if _is_masked(settings.api_key):
+            current = preferences_service.get_emby_connection()
+            settings = msgspec.structs.replace(settings, api_key=current.api_key)
+        preferences_service.save_emby_connection(settings)
+        await settings_service.on_emby_settings_changed(enabled=settings.enabled)
+        return EmbyConnectionSettingsResponse.from_settings(preferences_service.get_emby_connection())
+    except ConfigurationError as e:
+        logger.warning("Configuration error updating Emby settings: %s", e)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/emby/verify", response_model=EmbyVerifyConnectionResponse)
+async def verify_emby_connection(
+    settings: EmbyConnectionSettings = MsgSpecBody(EmbyConnectionSettings),
+    preferences_service: PreferencesService = Depends(get_preferences_service),
+):
+    if _is_masked(settings.api_key):
+        current = preferences_service.get_emby_connection()
+        settings = msgspec.structs.replace(settings, api_key=current.api_key)
+    from repositories.emby_repository import EmbyRepository
+    import httpx
+    repo = EmbyRepository(
+        http_client=httpx.AsyncClient(timeout=httpx.Timeout(10.0)),
+        base_url=settings.emby_url,
+        api_key=settings.api_key,
+        user_id=settings.user_id,
+    )
+    success, message = await repo.validate_connection()
+    return EmbyVerifyConnectionResponse(success=success, message=message)
 
 
 @router.get("/listenbrainz", response_model=ListenBrainzConnectionSettingsResponse)
