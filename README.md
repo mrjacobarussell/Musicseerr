@@ -4,6 +4,7 @@
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/habirabbu/musicseerr/pkgs/container/musicseerr)
+[![Docker Hub](https://img.shields.io/badge/docker-hub-blue?logo=docker&logoColor=white)](https://hub.docker.com/r/habirabbu/musicseerr)
 [![Discord](https://img.shields.io/discord/1356702267809808404?label=discord&logo=discord&logoColor=white)](https://discord.gg/B5suDg7gu2)
 [![Docs](https://img.shields.io/badge/docs-musicseerr.com-blue)](https://musicseerr.com/)
 
@@ -45,6 +46,8 @@ MusicSeerr is a self-hosted music request and discovery app built around [Lidarr
 You need Docker and a running [Lidarr](https://lidarr.audio/) instance with an API key.
 
 ### 1. Create a docker-compose.yml
+
+Images are available on [GHCR](https://github.com/habirabbu/musicseerr/pkgs/container/musicseerr) and [Docker Hub](https://hub.docker.com/r/habirabbu/musicseerr). Swap the image tag if you prefer Docker Hub (`habirabbu/musicseerr:latest`).
 
 ```yaml
 services:
