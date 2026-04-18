@@ -74,7 +74,7 @@ NPM    ?= pnpm
 	frontend-test-playlist-detail \
 	frontend-test-queuehelpers \
 	rebuild \
-	test tests check lint format ci
+	fmt format lint tests test ci
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_.-]+:.*## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*## "}; {printf "%-34s %s\n", $$1, $$2}'
@@ -296,16 +296,15 @@ frontend-test-jellyfin: ## Run Jellyfin frontend tests
 rebuild: ## Rebuild the application
 	cd "$(ROOT_DIR)" && ./manage.sh --rebuild
 
-test: backend-test frontend-test ## Run backend and frontend tests
-
-tests: test ## Alias for 'test'
-
-check: backend-test frontend-check ## Run backend tests and frontend type checks
-
-lint: backend-lint frontend-lint ## Run linting targets
+fmt: format ## Alias for 'format'
 
 format: ## Auto-format backend (ruff --fix) and frontend (prettier)
 	cd "$(ROOT_DIR)" && $(BACKEND_VENV_DIR)/bin/ruff check --fix backend
 	cd "$(FRONTEND_DIR)" && $(NPM) run format
 
-ci: backend-test backend-lint frontend-check frontend-lint frontend-format-check frontend-test-server ## Run the local CI checks
+lint: backend-lint frontend-lint ## Run all linting checks
+
+tests: backend-test frontend-test-server ## Run all tests
+test: tests ## Alias for 'tests'
+
+ci: backend-lint frontend-lint frontend-check frontend-format-check backend-test frontend-test-server ## Run the full CI pipeline (fmt-check + lint + typecheck + tests)

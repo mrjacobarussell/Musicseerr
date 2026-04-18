@@ -77,6 +77,44 @@ class TestCreatePlexPin:
         assert resp.status_code == 500
 
 
+class TestGetOrCreateSettingNoDeadlock:
+    def test_get_or_create_setting_does_not_deadlock(self, tmp_path):
+        import threading
+
+        from core.config import Settings
+        from services.preferences_service import PreferencesService
+
+        config_path = tmp_path / "config.json"
+        settings = Settings(
+            root_app_dir=tmp_path,
+            config_file_path=config_path,
+            cache_dir=tmp_path / "cache",
+            library_db_path=tmp_path / "cache" / "library.db",
+            queue_db_path=tmp_path / "cache" / "queue.db",
+        )
+
+        result = None
+        exc = None
+
+        def run():
+            nonlocal result, exc
+            try:
+                prefs = PreferencesService(settings)
+                result = prefs.get_or_create_setting("plex_client_id", lambda: "test-client-id")
+                result = (result, prefs.get_or_create_setting("plex_client_id", lambda: "other"))
+            except (OSError, ValueError, RuntimeError) as e:
+                exc = e
+
+        t = threading.Thread(target=run)
+        t.start()
+        t.join(timeout=5)
+        assert not t.is_alive(), "Deadlock detected: PreferencesService hung for 5s"
+        assert exc is None
+        assert result[0] == "test-client-id"
+        assert result[1] == "test-client-id"
+
+
+
 class TestPollPlexPin:
     def test_poll_pending(self, auth_client):
         resp = auth_client.get("/plex/auth/poll?pin_id=12345")
