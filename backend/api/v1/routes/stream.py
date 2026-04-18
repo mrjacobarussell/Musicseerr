@@ -15,6 +15,7 @@ from core.dependencies import (
     get_local_files_service,
     get_navidrome_playback_service,
     get_plex_playback_service,
+    get_preferences_service,
 )
 from core.exceptions import ExternalServiceError, PlaybackNotAllowedError, ResourceNotFoundError
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
@@ -23,13 +24,23 @@ from services.jellyfin_playback_service import JellyfinPlaybackService
 from services.local_files_service import LocalFilesService
 from services.navidrome_playback_service import NavidromePlaybackService
 from services.plex_playback_service import PlexPlaybackService
+from services.preferences_service import PreferencesService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(route_class=MsgSpecRoute, prefix="/stream", tags=["streaming"])
 
 
-@router.get("/jellyfin/{item_id}")
+def require_service_enabled(service: str):
+    def _dep(preferences_service: PreferencesService = Depends(get_preferences_service)) -> None:
+        toggles = preferences_service.get_advanced_settings().playback_services
+        if not getattr(toggles, service, True):
+            raise HTTPException(status_code=403, detail=f"{service} playback is disabled by admin")
+
+    return _dep
+
+
+@router.get("/jellyfin/{item_id}", dependencies=[Depends(require_service_enabled("jellyfin"))])
 async def stream_jellyfin_audio(
     item_id: str,
     request: Request,
@@ -49,7 +60,7 @@ async def stream_jellyfin_audio(
         raise HTTPException(status_code=502, detail="Failed to stream from Jellyfin")
 
 
-@router.head("/jellyfin/{item_id}")
+@router.head("/jellyfin/{item_id}", dependencies=[Depends(require_service_enabled("jellyfin"))])
 async def head_jellyfin_audio(
     item_id: str,
     playback_service: JellyfinPlaybackService = Depends(get_jellyfin_playback_service),
@@ -66,7 +77,11 @@ async def head_jellyfin_audio(
         raise HTTPException(status_code=502, detail="Failed to resolve Jellyfin stream")
 
 
-@router.post("/jellyfin/{item_id}/start", response_model=PlaybackSessionResponse)
+@router.post(
+    "/jellyfin/{item_id}/start",
+    response_model=PlaybackSessionResponse,
+    dependencies=[Depends(require_service_enabled("jellyfin"))],
+)
 async def start_jellyfin_playback(
     item_id: str,
     body: StartPlaybackRequest | None = Body(default=None),
@@ -88,7 +103,11 @@ async def start_jellyfin_playback(
         raise HTTPException(status_code=502, detail="Failed to start Jellyfin playback")
 
 
-@router.post("/jellyfin/{item_id}/progress", status_code=204)
+@router.post(
+    "/jellyfin/{item_id}/progress",
+    status_code=204,
+    dependencies=[Depends(require_service_enabled("jellyfin"))],
+)
 async def report_jellyfin_progress(
     item_id: str,
     body: ProgressReportRequest = MsgSpecBody(ProgressReportRequest),
@@ -107,7 +126,11 @@ async def report_jellyfin_progress(
         raise HTTPException(status_code=502, detail="Failed to report progress")
 
 
-@router.post("/jellyfin/{item_id}/stop", status_code=204)
+@router.post(
+    "/jellyfin/{item_id}/stop",
+    status_code=204,
+    dependencies=[Depends(require_service_enabled("jellyfin"))],
+)
 async def stop_jellyfin_playback(
     item_id: str,
     body: StopReportRequest = MsgSpecBody(StopReportRequest),
@@ -125,7 +148,7 @@ async def stop_jellyfin_playback(
         raise HTTPException(status_code=502, detail="Failed to report playback stop")
 
 
-@router.head("/local/{track_id}")
+@router.head("/local/{track_id}", dependencies=[Depends(require_service_enabled("local_files"))])
 async def head_local_file(
     track_id: int,
     local_service: LocalFilesService = Depends(get_local_files_service),
@@ -151,7 +174,7 @@ async def head_local_file(
         raise HTTPException(status_code=500, detail="Failed to read local file")
 
 
-@router.get("/local/{track_id}")
+@router.get("/local/{track_id}", dependencies=[Depends(require_service_enabled("local_files"))])
 async def stream_local_file(
     track_id: int,
     request: Request,
@@ -186,7 +209,7 @@ async def stream_local_file(
         raise HTTPException(status_code=500, detail="Failed to read local file")
 
 
-@router.head("/navidrome/{item_id}")
+@router.head("/navidrome/{item_id}", dependencies=[Depends(require_service_enabled("navidrome"))])
 async def head_navidrome_audio(
     item_id: str,
     playback_service: NavidromePlaybackService = Depends(get_navidrome_playback_service),
@@ -199,7 +222,7 @@ async def head_navidrome_audio(
         raise HTTPException(status_code=502, detail="Failed to stream from Navidrome")
 
 
-@router.get("/navidrome/{item_id}")
+@router.get("/navidrome/{item_id}", dependencies=[Depends(require_service_enabled("navidrome"))])
 async def stream_navidrome_audio(
     item_id: str,
     request: Request,
@@ -216,7 +239,7 @@ async def stream_navidrome_audio(
         raise HTTPException(status_code=502, detail="Failed to stream from Navidrome")
 
 
-@router.post("/navidrome/{item_id}/scrobble")
+@router.post("/navidrome/{item_id}/scrobble", dependencies=[Depends(require_service_enabled("navidrome"))])
 async def scrobble_navidrome(
     item_id: str,
     playback_service: NavidromePlaybackService = Depends(get_navidrome_playback_service),
@@ -225,7 +248,7 @@ async def scrobble_navidrome(
     return {"status": "ok" if ok else "error"}
 
 
-@router.post("/navidrome/{item_id}/now-playing")
+@router.post("/navidrome/{item_id}/now-playing", dependencies=[Depends(require_service_enabled("navidrome"))])
 async def navidrome_now_playing(
     item_id: str,
     playback_service: NavidromePlaybackService = Depends(get_navidrome_playback_service),
@@ -234,7 +257,7 @@ async def navidrome_now_playing(
     return {"status": "ok" if ok else "error"}
 
 
-@router.post("/navidrome/{item_id}/stopped")
+@router.post("/navidrome/{item_id}/stopped", dependencies=[Depends(require_service_enabled("navidrome"))])
 async def navidrome_stopped(
     item_id: str,
     playback_service: NavidromePlaybackService = Depends(get_navidrome_playback_service),
@@ -243,7 +266,7 @@ async def navidrome_stopped(
     return {"status": "ok"}
 
 
-@router.head("/plex/{part_key:path}")
+@router.head("/plex/{part_key:path}", dependencies=[Depends(require_service_enabled("plex"))])
 async def head_plex_audio(
     part_key: str,
     playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
@@ -256,7 +279,7 @@ async def head_plex_audio(
         raise HTTPException(status_code=502, detail="Failed to stream from Plex")
 
 
-@router.get("/plex/{part_key:path}")
+@router.get("/plex/{part_key:path}", dependencies=[Depends(require_service_enabled("plex"))])
 async def stream_plex_audio(
     part_key: str,
     request: Request,
@@ -273,7 +296,7 @@ async def stream_plex_audio(
         raise HTTPException(status_code=502, detail="Failed to stream from Plex")
 
 
-@router.post("/plex/{rating_key}/scrobble")
+@router.post("/plex/{rating_key}/scrobble", dependencies=[Depends(require_service_enabled("plex"))])
 async def scrobble_plex(
     rating_key: str,
     playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
@@ -282,7 +305,7 @@ async def scrobble_plex(
     return {"status": "ok" if ok else "error"}
 
 
-@router.post("/plex/{rating_key}/now-playing")
+@router.post("/plex/{rating_key}/now-playing", dependencies=[Depends(require_service_enabled("plex"))])
 async def plex_now_playing(
     rating_key: str,
     playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
@@ -291,7 +314,7 @@ async def plex_now_playing(
     return {"status": "ok" if ok else "error"}
 
 
-@router.post("/plex/{rating_key}/stopped")
+@router.post("/plex/{rating_key}/stopped", dependencies=[Depends(require_service_enabled("plex"))])
 async def plex_stopped(
     rating_key: str,
     playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
@@ -300,7 +323,7 @@ async def plex_stopped(
     return {"status": "ok" if ok else "error"}
 
 
-@router.get("/emby/{item_id}")
+@router.get("/emby/{item_id}", dependencies=[Depends(require_service_enabled("emby"))])
 async def stream_emby_audio(
     item_id: str,
     request: Request,
@@ -320,7 +343,7 @@ async def stream_emby_audio(
         raise HTTPException(status_code=502, detail="Failed to stream from Emby")
 
 
-@router.head("/emby/{item_id}")
+@router.head("/emby/{item_id}", dependencies=[Depends(require_service_enabled("emby"))])
 async def head_emby_audio(
     item_id: str,
     playback_service: EmbyPlaybackService = Depends(get_emby_playback_service),
@@ -337,7 +360,11 @@ async def head_emby_audio(
         raise HTTPException(status_code=502, detail="Failed to resolve Emby stream")
 
 
-@router.post("/emby/{item_id}/start", response_model=PlaybackSessionResponse)
+@router.post(
+    "/emby/{item_id}/start",
+    response_model=PlaybackSessionResponse,
+    dependencies=[Depends(require_service_enabled("emby"))],
+)
 async def start_emby_playback(
     item_id: str,
     body: StartPlaybackRequest | None = Body(default=None),
@@ -359,7 +386,11 @@ async def start_emby_playback(
         raise HTTPException(status_code=502, detail="Failed to start Emby playback")
 
 
-@router.post("/emby/{item_id}/progress", status_code=204)
+@router.post(
+    "/emby/{item_id}/progress",
+    status_code=204,
+    dependencies=[Depends(require_service_enabled("emby"))],
+)
 async def report_emby_progress(
     item_id: str,
     body: ProgressReportRequest = MsgSpecBody(ProgressReportRequest),
@@ -378,7 +409,11 @@ async def report_emby_progress(
         raise HTTPException(status_code=502, detail="Failed to report progress")
 
 
-@router.post("/emby/{item_id}/stop", status_code=204)
+@router.post(
+    "/emby/{item_id}/stop",
+    status_code=204,
+    dependencies=[Depends(require_service_enabled("emby"))],
+)
 async def stop_emby_playback(
     item_id: str,
     body: StopReportRequest = MsgSpecBody(StopReportRequest),

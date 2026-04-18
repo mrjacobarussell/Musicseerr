@@ -137,11 +137,14 @@ async def update_advanced_settings(
 ):
     try:
         backend_settings = settings.to_backend()
+        current = preferences_service.get_advanced_settings()
         if _is_masked_api_key(backend_settings.audiodb_api_key):
-            current = preferences_service.get_advanced_settings()
             backend_settings = msgspec.structs.replace(
                 backend_settings, audiodb_api_key=current.audiodb_api_key
             )
+        backend_settings = msgspec.structs.replace(
+            backend_settings, playback_services=current.playback_services
+        )
         preferences_service.save_advanced_settings(backend_settings)
         await settings_service.on_coverart_settings_changed()
         saved = preferences_service.get_advanced_settings()

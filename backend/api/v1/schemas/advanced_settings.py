@@ -32,6 +32,15 @@ def _is_masked_api_key(value: str) -> bool:
     return value.startswith("***")
 
 
+class PlaybackServiceToggles(AppStruct):
+    jellyfin: bool = True
+    plex: bool = True
+    navidrome: bool = True
+    emby: bool = True
+    youtube: bool = True
+    local_files: bool = True
+
+
 class AdvancedSettings(AppStruct):
     cache_ttl_album_library: int = 86400
     cache_ttl_album_non_library: int = 21600
@@ -115,6 +124,7 @@ class AdvancedSettings(AppStruct):
     ignored_releases_retention_days: int = 365
     orphan_cover_demote_interval_hours: int = 24
     store_prune_interval_hours: int = 6
+    playback_services: PlaybackServiceToggles = msgspec.field(default_factory=PlaybackServiceToggles)
 
     def __post_init__(self) -> None:
         if not self.audiodb_api_key or not self.audiodb_api_key.strip():
