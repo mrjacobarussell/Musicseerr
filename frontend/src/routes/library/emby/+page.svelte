@@ -60,8 +60,16 @@
 
 <div class="container mx-auto p-4 max-w-7xl">
 	<div class="flex items-center gap-3 mb-6">
-		<svg class="h-8 w-8" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="color: rgb(82 186 82)">
-			<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+		<svg
+			class="h-8 w-8"
+			viewBox="0 0 24 24"
+			fill="currentColor"
+			xmlns="http://www.w3.org/2000/svg"
+			style="color: rgb(82 186 82)"
+		>
+			<path
+				d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"
+			/>
 		</svg>
 		<h1 class="text-3xl font-bold">Emby Library</h1>
 	</div>
@@ -98,18 +106,19 @@
 		{#if hub.recently_added.length === 0}
 			<p class="text-base-content/50 py-8 text-center">No albums found</p>
 		{:else}
-			<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+			<div
+				class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+			>
 				{#each hub.recently_added as album (album.emby_id)}
-					<button
-						class="group text-left"
-						onclick={() => openAlbum(album)}
-					>
+					<button class="group text-left" onclick={() => openAlbum(album)}>
 						<div class="aspect-square rounded-lg overflow-hidden bg-base-300 mb-2 relative">
 							<img
 								src={getImageUrl(album)}
 								alt={album.name}
 								class="w-full h-full object-cover group-hover:scale-105 transition-transform"
-								onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+								onerror={(e) => {
+									(e.target as HTMLImageElement).style.display = 'none';
+								}}
 							/>
 						</div>
 						<p class="font-medium text-sm truncate">{album.name}</p>
@@ -142,7 +151,9 @@
 						src={selectedAlbum.image_url ?? API.embyLibrary.image(selectedAlbum.emby_id)}
 						alt={selectedAlbum.name}
 						class="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-						onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+						onerror={(e) => {
+							(e.target as HTMLImageElement).style.display = 'none';
+						}}
 					/>
 					<div>
 						<h3 class="text-xl font-bold">{selectedAlbum.name}</h3>
@@ -155,10 +166,7 @@
 				</div>
 
 				{#if selectedAlbum.tracks.length > 0}
-					<button
-						class="btn btn-primary btn-sm mb-4"
-						onclick={() => playAlbum(selectedAlbum!)}
-					>
+					<button class="btn btn-primary btn-sm mb-4" onclick={() => playAlbum(selectedAlbum!)}>
 						Play Album
 					</button>
 					<div class="divide-y divide-base-300 max-h-80 overflow-y-auto">
@@ -167,10 +175,13 @@
 								class="w-full flex items-center gap-3 py-2 px-1 hover:bg-base-200 rounded text-left"
 								onclick={() => playAlbum(selectedAlbum!, i)}
 							>
-								<span class="text-xs text-base-content/40 w-6 text-right">{track.track_number}</span>
+								<span class="text-xs text-base-content/40 w-6 text-right">{track.track_number}</span
+								>
 								<span class="flex-1 truncate text-sm">{track.title}</span>
 								<span class="text-xs text-base-content/40">
-									{Math.floor(track.duration_seconds / 60)}:{String(Math.floor(track.duration_seconds % 60)).padStart(2, '0')}
+									{Math.floor(track.duration_seconds / 60)}:{String(
+										Math.floor(track.duration_seconds % 60)
+									).padStart(2, '0')}
 								</span>
 							</button>
 						{/each}

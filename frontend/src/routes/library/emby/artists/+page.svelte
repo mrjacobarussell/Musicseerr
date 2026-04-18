@@ -2,7 +2,12 @@
 	import { API } from '$lib/constants';
 	import { api } from '$lib/api/client';
 	import { launchEmbyPlayback } from '$lib/player/launchEmbyPlayback';
-	import type { EmbyArtistPaginatedResponse, EmbyArtistSummary, EmbyArtistDetail, EmbyAlbumDetail } from '$lib/types';
+	import type {
+		EmbyArtistPaginatedResponse,
+		EmbyArtistSummary,
+		EmbyArtistDetail,
+		EmbyAlbumDetail
+	} from '$lib/types';
 	import { onMount } from 'svelte';
 
 	const PAGE_SIZE = 50;
@@ -57,7 +62,9 @@
 		artistLoading = true;
 		selectedArtist = null;
 		try {
-			selectedArtist = await api.get<EmbyArtistDetail>(API.embyLibrary.artistDetail(artist.emby_id));
+			selectedArtist = await api.get<EmbyArtistDetail>(
+				API.embyLibrary.artistDetail(artist.emby_id)
+			);
 		} catch {
 			artistModalOpen = false;
 		} finally {
@@ -130,10 +137,14 @@
 								src={artist.image_url}
 								alt={artist.name}
 								class="w-full h-full object-cover group-hover:scale-105 transition-transform"
-								onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+								onerror={(e) => {
+									(e.target as HTMLImageElement).style.display = 'none';
+								}}
 							/>
 						{:else}
-							<div class="w-full h-full flex items-center justify-center text-base-content/30 text-4xl font-bold">
+							<div
+								class="w-full h-full flex items-center justify-center text-base-content/30 text-4xl font-bold"
+							>
 								{artist.name[0]?.toUpperCase() ?? '?'}
 							</div>
 						{/if}
@@ -148,11 +159,7 @@
 
 		{#if artists.length < total}
 			<div class="flex justify-center mt-8">
-				<button
-					class="btn btn-outline"
-					disabled={loadingMore}
-					onclick={() => loadArtists(false)}
-				>
+				<button class="btn btn-outline" disabled={loadingMore} onclick={() => loadArtists(false)}>
 					{#if loadingMore}
 						<span class="loading loading-spinner loading-sm"></span>
 					{/if}
@@ -196,7 +203,9 @@
 									src={album.image_url ?? API.embyLibrary.image(album.emby_id)}
 									alt={album.name}
 									class="w-full h-full object-cover group-hover:scale-105 transition-transform"
-									onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+									onerror={(e) => {
+										(e.target as HTMLImageElement).style.display = 'none';
+									}}
 								/>
 							</div>
 							<p class="text-sm font-medium truncate">{album.name}</p>
@@ -228,12 +237,16 @@
 						src={selectedAlbum.image_url ?? API.embyLibrary.image(selectedAlbum.emby_id)}
 						alt={selectedAlbum.name}
 						class="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-						onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+						onerror={(e) => {
+							(e.target as HTMLImageElement).style.display = 'none';
+						}}
 					/>
 					<div>
 						<h3 class="text-xl font-bold">{selectedAlbum.name}</h3>
 						<p class="text-base-content/60">{selectedAlbum.artist_name}</p>
-						{#if selectedAlbum.year}<p class="text-sm text-base-content/40">{selectedAlbum.year}</p>{/if}
+						{#if selectedAlbum.year}<p class="text-sm text-base-content/40">
+								{selectedAlbum.year}
+							</p>{/if}
 						<p class="text-sm text-base-content/50 mt-1">{selectedAlbum.track_count} tracks</p>
 					</div>
 				</div>
@@ -248,10 +261,13 @@
 								class="w-full flex items-center gap-3 py-2 px-1 hover:bg-base-200 rounded text-left"
 								onclick={() => playAlbum(selectedAlbum!, i)}
 							>
-								<span class="text-xs text-base-content/40 w-6 text-right">{track.track_number}</span>
+								<span class="text-xs text-base-content/40 w-6 text-right">{track.track_number}</span
+								>
 								<span class="flex-1 truncate text-sm">{track.title}</span>
 								<span class="text-xs text-base-content/40">
-									{Math.floor(track.duration_seconds / 60)}:{String(Math.floor(track.duration_seconds % 60)).padStart(2, '0')}
+									{Math.floor(track.duration_seconds / 60)}:{String(
+										Math.floor(track.duration_seconds % 60)
+									).padStart(2, '0')}
 								</span>
 							</button>
 						{/each}

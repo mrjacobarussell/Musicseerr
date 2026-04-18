@@ -113,7 +113,9 @@
 							src={album.image_url ?? API.embyLibrary.image(album.emby_id)}
 							alt={album.name}
 							class="w-full h-full object-cover group-hover:scale-105 transition-transform"
-							onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+							onerror={(e) => {
+								(e.target as HTMLImageElement).style.display = 'none';
+							}}
 						/>
 					</div>
 					<p class="font-medium text-sm truncate">{album.name}</p>
@@ -127,11 +129,7 @@
 
 		{#if albums.length < total}
 			<div class="flex justify-center mt-8">
-				<button
-					class="btn btn-outline"
-					disabled={loadingMore}
-					onclick={() => loadAlbums(false)}
-				>
+				<button class="btn btn-outline" disabled={loadingMore} onclick={() => loadAlbums(false)}>
 					{#if loadingMore}
 						<span class="loading loading-spinner loading-sm"></span>
 					{/if}
@@ -155,12 +153,16 @@
 						src={selectedAlbum.image_url ?? API.embyLibrary.image(selectedAlbum.emby_id)}
 						alt={selectedAlbum.name}
 						class="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-						onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+						onerror={(e) => {
+							(e.target as HTMLImageElement).style.display = 'none';
+						}}
 					/>
 					<div>
 						<h3 class="text-xl font-bold">{selectedAlbum.name}</h3>
 						<p class="text-base-content/60">{selectedAlbum.artist_name}</p>
-						{#if selectedAlbum.year}<p class="text-sm text-base-content/40">{selectedAlbum.year}</p>{/if}
+						{#if selectedAlbum.year}<p class="text-sm text-base-content/40">
+								{selectedAlbum.year}
+							</p>{/if}
 						<p class="text-sm text-base-content/50 mt-1">{selectedAlbum.track_count} tracks</p>
 					</div>
 				</div>
@@ -175,10 +177,13 @@
 								class="w-full flex items-center gap-3 py-2 px-1 hover:bg-base-200 rounded text-left"
 								onclick={() => playAlbum(selectedAlbum!, i)}
 							>
-								<span class="text-xs text-base-content/40 w-6 text-right">{track.track_number}</span>
+								<span class="text-xs text-base-content/40 w-6 text-right">{track.track_number}</span
+								>
 								<span class="flex-1 truncate text-sm">{track.title}</span>
 								<span class="text-xs text-base-content/40">
-									{Math.floor(track.duration_seconds / 60)}:{String(Math.floor(track.duration_seconds % 60)).padStart(2, '0')}
+									{Math.floor(track.duration_seconds / 60)}:{String(
+										Math.floor(track.duration_seconds % 60)
+									).padStart(2, '0')}
 								</span>
 							</button>
 						{/each}
