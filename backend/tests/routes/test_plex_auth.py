@@ -102,7 +102,7 @@ class TestGetOrCreateSettingNoDeadlock:
                 prefs = PreferencesService(settings)
                 result = prefs.get_or_create_setting("plex_client_id", lambda: "test-client-id")
                 result = (result, prefs.get_or_create_setting("plex_client_id", lambda: "other"))
-            except Exception as e:
+            except (OSError, ValueError, RuntimeError) as e:
                 exc = e
 
         t = threading.Thread(target=run)
