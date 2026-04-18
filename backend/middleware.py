@@ -162,6 +162,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if token.startswith("Bearer "):
             token = token[7:]
 
+        # Stream endpoints are loaded by the browser <audio> element which cannot
+        # set custom headers, so also accept the token as a query parameter.
+        if not token and path.startswith("/api/v1/stream/"):
+            token = request.query_params.get("token", "")
+
         if not token:
             return MsgSpecJSONResponse(
                 status_code=401,
