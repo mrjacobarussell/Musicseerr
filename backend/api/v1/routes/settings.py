@@ -35,6 +35,7 @@ from api.v1.schemas.settings import (
     EmbyConnectionSettings,
     EmbyConnectionSettingsResponse,
     EmbyVerifyConnectionResponse,
+    EmbyUserInfo,
     _is_masked,
     MusicBrainzConnectionSettings,
 )
@@ -404,7 +405,7 @@ async def verify_emby_connection(
     if _is_masked(settings.api_key):
         current = preferences_service.get_emby_connection()
         settings = msgspec.structs.replace(settings, api_key=current.api_key)
-    from repositories.emby_repository import EmbyRepository
+    from repositories.emby_repository import EmbyRepository, get_emby_users
     import httpx
     repo = EmbyRepository(
         http_client=httpx.AsyncClient(timeout=httpx.Timeout(10.0)),
@@ -413,7 +414,15 @@ async def verify_emby_connection(
         user_id=settings.user_id,
     )
     success, message = await repo.validate_connection()
-    return EmbyVerifyConnectionResponse(success=success, message=message)
+    users: list[EmbyUserInfo] = []
+    if success:
+        raw_users = await get_emby_users(settings.emby_url, settings.api_key)
+        users = [
+            EmbyUserInfo(id=u["Id"], name=u["Name"])
+            for u in raw_users
+            if u.get("Id") and u.get("Name")
+        ]
+    return EmbyVerifyConnectionResponse(success=success, message=message, users=users)
 
 
 @router.get("/listenbrainz", response_model=ListenBrainzConnectionSettingsResponse)

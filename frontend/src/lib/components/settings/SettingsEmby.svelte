@@ -9,15 +9,29 @@
 		enabled: boolean;
 	};
 
+	type EmbyUser = { id: string; name: string };
+	type EmbyTestResult = { success: boolean; message: string; users?: EmbyUser[] };
+	type EmbySettingsForm = ReturnType<typeof createSettingsForm<EmbyConnectionSettings>> & {
+		testResult: EmbyTestResult | null;
+	};
+
 	const form = createSettingsForm<EmbyConnectionSettings>({
 		loadEndpoint: '/api/v1/settings/emby',
 		saveEndpoint: '/api/v1/settings/emby',
 		testEndpoint: '/api/v1/settings/emby/verify',
 		enabledField: 'enabled',
-		refreshIntegration: true
-	});
+		refreshIntegration: true,
+		afterTest: (result) => {
+			const typedResult = result as EmbyTestResult;
+			availableUsers = typedResult.users ?? [];
+			if (typedResult.success && form.data && !form.data.user_id && availableUsers.length > 0) {
+				form.data.user_id = availableUsers[0].id;
+			}
+		}
+	}) as EmbySettingsForm;
 
 	let showApiKey = $state(false);
+	let availableUsers: EmbyUser[] = $state([]);
 
 	export async function load() {
 		await form.load();
@@ -28,6 +42,7 @@
 	}
 
 	async function test() {
+		availableUsers = [];
 		await form.test();
 	}
 
@@ -87,23 +102,40 @@
 					</label>
 				</div>
 
-				<div class="form-control w-full">
-					<label class="label" for="emby-user-id">
-						<span class="label-text">User ID</span>
-					</label>
-					<input
-						id="emby-user-id"
-						type="text"
-						bind:value={form.data.user_id}
-						class="input input-bordered w-full"
-						placeholder="Your Emby user ID"
-					/>
-					<label class="label" for="emby-user-id">
-						<span class="label-text-alt text-base-content/50">
-							Dashboard → Users → click user → copy ID from the URL
-						</span>
-					</label>
-				</div>
+				{#if availableUsers.length > 0}
+					<div class="form-control w-full">
+						<label class="label" for="emby-user">
+							<span class="label-text">User</span>
+						</label>
+						<select
+							id="emby-user"
+							bind:value={form.data.user_id}
+							class="select select-bordered w-full"
+						>
+							{#each availableUsers as user (user.id)}
+								<option value={user.id}>{user.name}</option>
+							{/each}
+						</select>
+					</div>
+				{:else}
+					<div class="form-control w-full">
+						<label class="label" for="emby-user-id">
+							<span class="label-text">User ID</span>
+						</label>
+						<input
+							id="emby-user-id"
+							type="text"
+							bind:value={form.data.user_id}
+							class="input input-bordered w-full"
+							placeholder="Test connection to select user"
+						/>
+						<label class="label" for="emby-user-id">
+							<span class="label-text-alt text-base-content/50">
+								Test connection to load available users
+							</span>
+						</label>
+					</div>
+				{/if}
 
 				{#if form.testResult}
 					<div

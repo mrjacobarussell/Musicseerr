@@ -396,7 +396,13 @@ class EmbyConnectionSettingsResponse(AppStruct):
         )
 
 
+class EmbyUserInfo(AppStruct, frozen=True):
+    id: str
+    name: str
+
+
 class EmbyVerifyConnectionResponse(AppStruct):
     success: bool
     message: str
+    users: list[EmbyUserInfo] = []
 
