@@ -48,7 +48,7 @@ class EmbyArtistDetail(AppStruct):
     albums: list[EmbyAlbumSummary] = []
 
 
-class EmbyLibraryStats(AppStruct):
+class EmbyLibraryStats(AppStruct, frozen=True):
     total_tracks: int = 0
     total_albums: int = 0
     total_artists: int = 0
