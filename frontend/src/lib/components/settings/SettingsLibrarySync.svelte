@@ -42,13 +42,23 @@
 		try {
 			await api.global.post('/api/v1/library/sync');
 			form.showMessage('Library sync started');
-			syncStatus.checkStatus();
-			await load();
 		} catch {
-			form.showMessage("Couldn't sync the library", 'error', false);
+			// A proxy/network timeout can fire while the backend continues syncing.
+			// Check actual sync status before surfacing an error to the user.
+			await syncStatus.checkStatusAsync();
+			if (syncStatus.isActive) {
+				form.showMessage('Library sync started');
+			} else {
+				form.showMessage("Couldn't sync the library", 'error', false);
+				syncing = false;
+				return;
+			}
 		} finally {
 			syncing = false;
 		}
+		// Reload settings outside the try so a load failure doesn't mask a successful sync
+		syncStatus.checkStatus();
+		await load();
 	}
 
 	function formatLastSync(timestamp: number | null): string {

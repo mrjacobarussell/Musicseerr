@@ -309,6 +309,10 @@ function createSyncStatusStore() {
 			void fetchStatus();
 		},
 
+		async checkStatusAsync(): Promise<void> {
+			await fetchStatus();
+		},
+
 		async cancelSync(): Promise<void> {
 			try {
 				await api.global.post('/api/v1/cache/sync/cancel');
