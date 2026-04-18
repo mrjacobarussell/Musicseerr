@@ -37,6 +37,7 @@
 		headerLink?: string | null;
 		headerActions?: Snippet;
 		hideHeader?: boolean;
+		showPreview?: boolean;
 	}
 
 	let {
@@ -44,7 +45,8 @@
 		showConnectCard = true,
 		headerLink = null,
 		headerActions,
-		hideHeader = false
+		hideHeader = false,
+		showPreview = true
 	}: Props = $props();
 
 	function getGenreHref(genre: HomeGenre): string {
@@ -256,7 +258,7 @@
 								{/if}
 							</div>
 						</svelte:element>
-						{#if item.mbid}
+						{#if item.mbid && (($integrationStore.lidarr && !item.in_library && !isItemRequested) || showPreview)}
 							<div class="flex items-center justify-center gap-1 mt-1 pb-1">
 								{#if $integrationStore.lidarr && !item.in_library && !isItemRequested}
 									<AlbumRequestButton
@@ -266,15 +268,17 @@
 										artistMbid={item.artist_mbid ?? undefined}
 									/>
 								{/if}
-								<TrackPreviewButton
-									artist={item.artist_name ?? ''}
-									track={item.name}
-									ytConfigured={$integrationStore.youtube_api}
-									size="sm"
-									albumId={item.mbid}
-									coverUrl={item.image_url}
-									artistId={item.artist_mbid ?? undefined}
-								/>
+								{#if showPreview}
+									<TrackPreviewButton
+										artist={item.artist_name ?? ''}
+										track={item.name}
+										ytConfigured={$integrationStore.youtube_api}
+										size="sm"
+										albumId={item.mbid}
+										coverUrl={item.image_url}
+										artistId={item.artist_mbid ?? undefined}
+									/>
+								{/if}
 							</div>
 						{/if}
 					</div>

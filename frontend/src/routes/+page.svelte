@@ -39,7 +39,13 @@
 	}
 
 	type PreGenreBlock =
-		| { key: string; kind: 'section'; section: HomeSectionType; link?: string }
+		| {
+				key: string;
+				kind: 'section';
+				section: HomeSectionType;
+				link?: string;
+				showPreview?: boolean;
+		  }
 		| { key: 'weekly_exploration'; kind: 'weekly'; section: WeeklyExplorationSectionType };
 
 	function getPreGenreBlocks(): PreGenreBlock[] {
@@ -77,7 +83,8 @@
 				key: 'your_top_albums',
 				kind: 'section',
 				section: homeData.your_top_albums,
-				link: '/your-top'
+				link: '/your-top',
+				showPreview: false
 			});
 		}
 		if (homeData.recently_played && homeData.recently_played.items.length > 0) {
@@ -92,7 +99,8 @@
 				key: 'recently_added',
 				kind: 'section',
 				section: homeData.recently_added,
-				link: '/library/albums'
+				link: '/library/albums',
+				showPreview: false
 			});
 		}
 		return blocks;
@@ -235,7 +243,11 @@
 							{#each whatsHotBlocks as block (block.key)}
 								<div>
 									{#if block.kind === 'section'}
-										<HomeSection section={block.section} headerLink={block.link} />
+										<HomeSection
+											section={block.section}
+											headerLink={block.link}
+											showPreview={block.showPreview}
+										/>
 									{:else}
 										<WeeklyExploration
 											section={block.section}
@@ -257,7 +269,11 @@
 							{#each forYouBlocks as block (block.key)}
 								<div>
 									{#if block.kind === 'section'}
-										<HomeSection section={block.section} headerLink={block.link} />
+										<HomeSection
+											section={block.section}
+											headerLink={block.link}
+											showPreview={block.showPreview}
+										/>
 									{:else}
 										<WeeklyExploration
 											section={block.section}

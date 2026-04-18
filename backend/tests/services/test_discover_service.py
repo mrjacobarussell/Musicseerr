@@ -364,7 +364,7 @@ class TestDiscoverQueuePersonalization:
             return_value=[
                 {
                     "release_group_mbid": "fresh-rg-1",
-                    "title": "Fresh Album",
+                    "release_name": "Fresh Album",
                     "artist_credit_name": "Fresh Artist",
                     "artist_mbids": ["fresh-artist-1"],
                 }

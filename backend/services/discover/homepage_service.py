@@ -972,7 +972,7 @@ class DiscoverHomepageService:
                     )
                     items.append(HomeAlbum(
                         mbid=mbid,
-                        name=r.get("title", r.get("release_group_name", "Unknown")),
+                        name=r.get("release_name", r.get("title", "Unknown")),
                         artist_name=r.get("artist_credit_name", r.get("artist_name", "")),
                         artist_mbid=artist_mbids[0] if artist_mbids else None,
                         listen_count=r.get("listen_count"),

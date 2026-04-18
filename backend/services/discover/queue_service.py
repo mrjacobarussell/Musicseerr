@@ -271,7 +271,7 @@ class DiscoverQueueService:
             if isinstance(artist_mbids, list) and artist_mbids:
                 first_artist_mbid = self._mbid.normalize_mbid(artist_mbids[0]) or ""
 
-            album_name = release.get("title") or release.get("release_group_name") or "Unknown"
+            album_name = release.get("release_name") or release.get("title") or "Unknown"
             artist_name = release.get("artist_credit_name") or release.get("artist_name") or "Unknown"
             items.append(
                 self._mbid.make_queue_item(

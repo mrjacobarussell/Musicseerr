@@ -2,7 +2,9 @@
 	import type { WeeklyExplorationTrack, YouTubeQuotaStatus } from '$lib/types';
 	import { Music2, Disc3 } from 'lucide-svelte';
 	import { albumHrefOrNull, artistHrefOrNull } from '$lib/utils/entityRoutes';
-	import YouTubeIcon from './YouTubeIcon.svelte';
+	import { integrationStore } from '$lib/stores/integration';
+	import { libraryStore } from '$lib/stores/library';
+	import AlbumRequestButton from './AlbumRequestButton.svelte';
 	import TrackPreviewButton from './TrackPreviewButton.svelte';
 
 	interface Props {
@@ -25,6 +27,8 @@
 
 	const albumHref = $derived(albumHrefOrNull(track.release_group_mbid));
 	const artistHref = $derived(artistHrefOrNull(track.artist_mbid));
+	const albumMbid = $derived(track.release_group_mbid);
+	const isRequested = $derived(albumMbid ? libraryStore.isRequested(albumMbid) : false);
 
 	function formatDuration(ms: number | null): string {
 		if (!ms) return '';
@@ -32,11 +36,6 @@
 		const min = Math.floor(totalSec / 60);
 		const sec = totalSec % 60;
 		return `${min}:${sec.toString().padStart(2, '0')}`;
-	}
-
-	function youtubeSearchUrl(): string {
-		const q = [track.artist_name, track.title].filter(Boolean).join(' ');
-		return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 	}
 
 	let imgError = $state(false);
@@ -139,6 +138,14 @@
 	</div>
 
 	<div class="mt-auto flex items-center justify-center gap-3 px-2 pb-1 pt-0.5">
+		{#if albumMbid && $integrationStore.lidarr && !isRequested}
+			<AlbumRequestButton
+				mbid={albumMbid}
+				artistName={track.artist_name}
+				albumName={track.album_name || track.title}
+				artistMbid={track.artist_mbid ?? undefined}
+			/>
+		{/if}
 		<TrackPreviewButton
 			artist={track.artist_name}
 			track={track.title}
@@ -149,16 +156,6 @@
 			coverUrl={track.cover_url}
 			artistId={track.artist_mbid ?? undefined}
 		/>
-		<div class="tooltip tooltip-bottom" data-tip="Search on YouTube">
-			<a
-				href={youtubeSearchUrl()}
-				target="_blank"
-				rel="noopener noreferrer"
-				class="btn btn-circle btn-ghost btn-sm text-base-content/50 hover:text-error"
-			>
-				<YouTubeIcon class="h-4 w-4" />
-			</a>
-		</div>
 	</div>
 
 	{#if showQuota && quotaInfo}
