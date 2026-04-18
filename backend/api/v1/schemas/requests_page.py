@@ -25,6 +25,7 @@ class ActiveRequestItem(AppStruct):
     status_messages: list[StatusMessage] | None = None
     error_message: str | None = None
     lidarr_queue_id: int | None = None
+    lidarr_album_id: int | None = None
     quality: str | None = None
     protocol: str | None = None
     download_client: str | None = None

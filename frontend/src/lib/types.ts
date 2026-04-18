@@ -742,6 +742,7 @@ export type ActiveRequestItem = {
 	status_messages?: StatusMessage[] | null;
 	error_message?: string | null;
 	lidarr_queue_id?: number | null;
+	lidarr_album_id?: number | null;
 	quality?: string | null;
 	protocol?: string | null;
 	download_client?: string | null;

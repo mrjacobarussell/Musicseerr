@@ -412,6 +412,7 @@ class RequestsPageService:
             status_messages=status_messages,
             error_message=queue_item.get("errorMessage"),
             lidarr_queue_id=queue_item.get("id"),
+            lidarr_album_id=record.lidarr_album_id,
             quality=quality_name,
             protocol=queue_item.get("protocol"),
             download_client=queue_item.get("downloadClient"),
@@ -440,6 +441,7 @@ class RequestsPageService:
             download_state=None,
             status_messages=None,
             lidarr_queue_id=None,
+            lidarr_album_id=record.lidarr_album_id,
         )
 
     async def _check_if_completed(
