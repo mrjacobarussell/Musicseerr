@@ -18,7 +18,8 @@
 		Ban,
 		Pause,
 		Music,
-		Upload
+		Upload,
+		CheckCheck
 	} from 'lucide-svelte';
 
 	interface Props {
@@ -136,6 +137,11 @@
 			item.status === 'downloadClientUnavailable'
 	);
 	const artistMbid = $derived('artist_mbid' in item ? item.artist_mbid : null);
+	const receivedByLidarr = $derived(
+		mode === 'active' &&
+			item.status === 'pending' &&
+			(item as ActiveRequestItem).lidarr_album_id != null
+	);
 
 	function handleCancelClick(e: Event) {
 		e.stopPropagation();
@@ -258,13 +264,25 @@
 		</div>
 
 		<div class="flex flex-col items-end gap-1.5 shrink-0 pointer-events-auto">
-			<span
-				class="badge {statusConfig.badgeClass} badge-sm gap-1"
-				aria-label="Status: {statusConfig.label}"
-			>
-				<statusConfig.icon class="h-3 w-3" />
-				{statusConfig.label}
-			</span>
+			<div class="flex items-center gap-1 flex-wrap justify-end">
+				<span
+					class="badge {statusConfig.badgeClass} badge-sm gap-1"
+					aria-label="Status: {statusConfig.label}"
+				>
+					<statusConfig.icon class="h-3 w-3" />
+					{statusConfig.label}
+				</span>
+				{#if receivedByLidarr}
+					<span
+						class="badge badge-info badge-soft badge-sm gap-1"
+						title="Lidarr has accepted this request"
+						aria-label="Lidarr received"
+					>
+						<CheckCheck class="h-3 w-3" />
+						Lidarr received
+					</span>
+				{/if}
+			</div>
 
 			{#if hasProgress}
 				<div
