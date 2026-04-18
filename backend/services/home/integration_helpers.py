@@ -15,13 +15,21 @@ class HomeIntegrationHelpers:
     def __init__(self, preferences_service: PreferencesService):
         self._preferences = preferences_service
 
+    def _playback_toggles(self):
+        return self._preferences.get_advanced_settings().playback_services
+
     def is_listenbrainz_enabled(self) -> bool:
         lb_settings = self._preferences.get_listenbrainz_connection()
         return lb_settings.enabled and bool(lb_settings.username)
 
     def is_jellyfin_enabled(self) -> bool:
         jf_settings = self._preferences.get_jellyfin_connection()
-        return jf_settings.enabled and bool(jf_settings.jellyfin_url) and bool(jf_settings.api_key)
+        return (
+            jf_settings.enabled
+            and bool(jf_settings.jellyfin_url)
+            and bool(jf_settings.api_key)
+            and self._playback_toggles().jellyfin
+        )
 
     def is_lidarr_configured(self) -> bool:
         lidarr_connection = self._preferences.get_lidarr_connection()
@@ -29,15 +37,24 @@ class HomeIntegrationHelpers:
 
     def is_youtube_enabled(self) -> bool:
         yt_settings = self._preferences.get_youtube_connection()
-        return yt_settings.enabled
+        return yt_settings.enabled and self._playback_toggles().youtube
 
     def is_youtube_api_enabled(self) -> bool:
         yt_settings = self._preferences.get_youtube_connection()
-        return yt_settings.enabled and yt_settings.api_enabled and yt_settings.has_valid_api_key()
+        return (
+            yt_settings.enabled
+            and yt_settings.api_enabled
+            and yt_settings.has_valid_api_key()
+            and self._playback_toggles().youtube
+        )
 
     def is_local_files_enabled(self) -> bool:
         lf_settings = self._preferences.get_local_files_connection()
-        return lf_settings.enabled and bool(lf_settings.music_path)
+        return (
+            lf_settings.enabled
+            and bool(lf_settings.music_path)
+            and self._playback_toggles().local_files
+        )
 
     def is_navidrome_enabled(self) -> bool:
         nd_settings = self._preferences.get_navidrome_connection()
@@ -46,6 +63,7 @@ class HomeIntegrationHelpers:
             and bool(nd_settings.navidrome_url)
             and bool(nd_settings.username)
             and bool(nd_settings.password)
+            and self._playback_toggles().navidrome
         )
 
     def is_plex_enabled(self) -> bool:
@@ -55,11 +73,17 @@ class HomeIntegrationHelpers:
             and bool(plex_settings.plex_url)
             and bool(plex_settings.plex_token)
             and bool(plex_settings.music_library_ids)
+            and self._playback_toggles().plex
         )
 
     def is_emby_enabled(self) -> bool:
         emby_settings = self._preferences.get_emby_connection()
-        return emby_settings.enabled and bool(emby_settings.emby_url) and bool(emby_settings.api_key)
+        return (
+            emby_settings.enabled
+            and bool(emby_settings.emby_url)
+            and bool(emby_settings.api_key)
+            and self._playback_toggles().emby
+        )
 
     def is_lastfm_enabled(self) -> bool:
         return self._preferences.is_lastfm_enabled()

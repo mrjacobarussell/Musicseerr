@@ -1,15 +1,23 @@
 import logging
 
+import msgspec
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from api.v1.schemas.advanced_settings import PlaybackServiceToggles
 from api.v1.schemas.auth import (
     DefaultRequestSettings,
     UpdateUserRequest,
     UserSummary,
 )
-from core.dependencies import get_auth_service
+from core.dependencies import (
+    get_auth_service,
+    get_preferences_service,
+    get_settings_service,
+)
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
 from services.auth_service import AuthService
+from services.preferences_service import PreferencesService
+from services.settings_service import SettingsService
 
 logger = logging.getLogger(__name__)
 
@@ -101,3 +109,27 @@ async def update_request_settings(
         can_request=body.can_request,
     )
     return body
+
+
+@router.get("/playback-services", response_model=PlaybackServiceToggles)
+async def get_playback_services(
+    request: Request,
+    preferences_service: PreferencesService = Depends(get_preferences_service),
+):
+    _require_admin(request)
+    return preferences_service.get_advanced_settings().playback_services
+
+
+@router.put("/playback-services", response_model=PlaybackServiceToggles)
+async def update_playback_services(
+    request: Request,
+    body: PlaybackServiceToggles = MsgSpecBody(PlaybackServiceToggles),
+    preferences_service: PreferencesService = Depends(get_preferences_service),
+    settings_service: SettingsService = Depends(get_settings_service),
+):
+    _require_admin(request)
+    current = preferences_service.get_advanced_settings()
+    updated = msgspec.structs.replace(current, playback_services=body)
+    preferences_service.save_advanced_settings(updated)
+    await settings_service.on_coverart_settings_changed()
+    return preferences_service.get_advanced_settings().playback_services

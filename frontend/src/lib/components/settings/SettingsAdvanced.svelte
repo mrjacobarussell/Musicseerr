@@ -8,7 +8,8 @@
 		Database,
 		RotateCcw,
 		Save,
-		ImageIcon
+		ImageIcon,
+		PlayCircle
 	} from 'lucide-svelte';
 	import { createSettingsForm } from '$lib/utils/settingsForm.svelte';
 	import { onDestroy } from 'svelte';
@@ -19,6 +20,8 @@
 	import SettingsNetworkBatch from './SettingsNetworkBatch.svelte';
 	import SettingsStorageQueue from './SettingsStorageQueue.svelte';
 	import SettingsAudioDB from './SettingsAudioDB.svelte';
+	import SettingsPlaybackEnablement from './SettingsPlaybackEnablement.svelte';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	const form = createSettingsForm<AdvancedSettingsForm>({
 		loadEndpoint: '/api/v1/settings/advanced',
@@ -45,6 +48,7 @@
 	let openNetworkBatch = $state(false);
 	let openStorageQueue = $state(false);
 	let openAudioDB = $state(false);
+	let openPlaybackEnablement = $state(true);
 
 	onDestroy(() => form.cleanup());
 </script>
@@ -73,6 +77,20 @@
 				{/if}
 				<span>{form.message}</span>
 			</div>
+		{/if}
+
+		{#if authStore.role === 'admin'}
+			<SettingsSectionCollapse
+				title="Playback Services"
+				description="Turn individual streaming services on or off for the whole server"
+				icon={PlayCircle}
+				iconBgClass="bg-success/10"
+				iconTextClass="text-success"
+				bind:isOpen={openPlaybackEnablement}
+				name="advanced-settings"
+			>
+				<SettingsPlaybackEnablement />
+			</SettingsSectionCollapse>
 		{/if}
 
 		<SettingsSectionCollapse
