@@ -6,6 +6,15 @@ import { api, ApiError } from '$lib/api/client';
 export type AlbumRequestResult = {
 	success: boolean;
 	error?: string;
+	awaitingApproval?: boolean;
+};
+
+type NewRequestResponse = {
+	success: boolean;
+	message: string;
+	musicbrainz_id: string;
+	status: string;
+	awaiting_approval?: boolean;
 };
 
 export type AlbumRequestContext = {
@@ -22,7 +31,7 @@ export async function requestAlbum(
 	context?: AlbumRequestContext
 ): Promise<AlbumRequestResult> {
 	try {
-		await api.global.post('/api/v1/requests/new', {
+		const response = (await api.global.post('/api/v1/requests/new', {
 			musicbrainz_id: musicbrainzId,
 			artist: context?.artist ?? undefined,
 			album: context?.album ?? undefined,
@@ -30,11 +39,20 @@ export async function requestAlbum(
 			artist_mbid: context?.artistMbid ?? undefined,
 			monitor_artist: context?.monitorArtist ?? false,
 			auto_download_artist: context?.autoDownloadArtist ?? false
-		});
+		})) as NewRequestResponse | undefined;
 
 		libraryStore.addRequested(musicbrainzId);
 		notifyRequestCountChanged();
-		return { success: true };
+
+		const awaitingApproval = response?.awaiting_approval === true;
+		if (awaitingApproval) {
+			errorModal.show(
+				'Awaiting approval',
+				'Your request has been sent for admin approval. You\u2019ll see it appear once an admin approves it.',
+				''
+			);
+		}
+		return { success: true, awaitingApproval };
 	} catch (e) {
 		if (e instanceof ApiError) {
 			const errorDetail = e.message || 'Unknown error';

@@ -6,6 +6,8 @@
 	import { errorModal } from '$lib/stores/errorModal';
 	import { libraryStore } from '$lib/stores/library';
 	import { integrationStore } from '$lib/stores/integration';
+	import { authStore } from '$lib/stores/auth.svelte';
+	import { adminPendingApprovalsStore } from '$lib/stores/adminPendingApprovals';
 	import { initCacheTTLs } from '$lib/stores/cacheTtl';
 	import { playerStore } from '$lib/stores/player.svelte';
 	import { launchYouTubePlayback } from '$lib/player/launchYouTubePlayback';
@@ -54,7 +56,8 @@
 		X,
 		UserRound,
 		ListMusic,
-		ArrowUpCircle
+		ArrowUpCircle,
+		Inbox
 	} from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 	import QueryProvider from '$lib/queries/QueryProvider.svelte';
@@ -244,6 +247,18 @@
 
 	const integrations = fromStore(integrationStore);
 	const lidarrConfigured = $derived(integrations.current.lidarr || !integrations.current.loaded);
+
+	const pendingApprovalsState = fromStore(adminPendingApprovalsStore);
+	const pendingApprovalsCount = $derived(
+		authStore.role === 'admin' ? pendingApprovalsState.current.count : 0
+	);
+	$effect(() => {
+		if (authStore.role === 'admin') {
+			void adminPendingApprovalsStore.ensureLoaded();
+		} else {
+			adminPendingApprovalsStore.reset();
+		}
+	});
 </script>
 
 <QueryProvider>
@@ -280,7 +295,25 @@
 								/>
 							</div>
 						</div>
-						<div class="navbar-end w-auto pr-2">
+						<div class="navbar-end w-auto pr-2 flex items-center gap-1">
+							{#if authStore.role === 'admin'}
+								<a
+									href="/admin/approvals"
+									class="btn btn-ghost btn-circle btn-md relative"
+									aria-label="Pending approvals"
+									title="Pending approvals"
+								>
+									<Inbox class="h-6 w-6" />
+									{#if pendingApprovalsCount > 0}
+										<span
+											class="badge badge-error badge-xs absolute top-1 right-1 min-w-4 px-1"
+											aria-label="{pendingApprovalsCount} pending"
+										>
+											{pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
+										</span>
+									{/if}
+								</a>
+							{/if}
 							<a href="/profile" class="btn btn-ghost btn-circle btn-md" aria-label="Profile">
 								<UserRound class="h-6 w-6" />
 							</a>

@@ -1,5 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from api.v1.schemas.request import AlbumRequest, RequestAcceptedResponse, QueueStatusResponse
+from api.v1.schemas.request import (
+    AlbumRequest,
+    QueueStatusResponse,
+    RequestAcceptedResponse,
+)
 from core.dependencies import get_request_service, get_request_history_store, get_auth_service
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
 from infrastructure.persistence.request_history import RequestHistoryStore
@@ -24,7 +28,30 @@ async def request_album(
     if auth.is_auth_enabled() and username and role != "admin":
         can_request, quota, quota_days = auth.get_effective_request_settings(username)
         if not can_request:
-            raise HTTPException(status_code=403, detail="You don't have permission to make requests")
+            # Route into the admin approval queue instead of rejecting outright.
+            if not album_request.artist or not album_request.album:
+                raise HTTPException(
+                    status_code=400,
+                    detail="artist and album are required to queue an approval request",
+                )
+            await request_history.async_record_request(
+                musicbrainz_id=album_request.musicbrainz_id,
+                artist_name=album_request.artist,
+                album_title=album_request.album,
+                year=album_request.year,
+                artist_mbid=album_request.artist_mbid,
+                monitor_artist=album_request.monitor_artist,
+                auto_download_artist=album_request.auto_download_artist,
+                requested_by=username,
+                approval_status="pending_approval",
+            )
+            return RequestAcceptedResponse(
+                success=True,
+                message="Your request is awaiting admin approval",
+                musicbrainz_id=album_request.musicbrainz_id,
+                status="pending_approval",
+                awaiting_approval=True,
+            )
         if quota is not None:
             used = await request_history.async_count_user_requests(username, quota_days)
             if used >= quota:

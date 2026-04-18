@@ -17,6 +17,7 @@ class RequestAcceptedResponse(AppStruct):
     message: str
     musicbrainz_id: str
     status: str = "pending"
+    awaiting_approval: bool = False
 
 
 class QueueStatusResponse(AppStruct):

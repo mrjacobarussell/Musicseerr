@@ -24,6 +24,7 @@ class RequestHistoryRecord(msgspec.Struct):
     monitor_artist: bool = False
     auto_download_artist: bool = False
     requested_by: str | None = None
+    approval_status: str = "approved"
 
 
 class RequestHistoryStore:
@@ -61,7 +62,8 @@ class RequestHistoryStore:
                     status TEXT NOT NULL,
                     lidarr_album_id INTEGER,
                     monitor_artist INTEGER NOT NULL DEFAULT 0,
-                    auto_download_artist INTEGER NOT NULL DEFAULT 0
+                    auto_download_artist INTEGER NOT NULL DEFAULT 0,
+                    approval_status TEXT NOT NULL DEFAULT 'approved'
                 )
                 """
             )
@@ -73,6 +75,7 @@ class RequestHistoryStore:
                 ("monitor_artist", "INTEGER NOT NULL DEFAULT 0"),
                 ("auto_download_artist", "INTEGER NOT NULL DEFAULT 0"),
                 ("requested_by", "TEXT"),
+                ("approval_status", "TEXT NOT NULL DEFAULT 'approved'"),
             ]:
                 try:
                     conn.execute(f"ALTER TABLE request_history ADD COLUMN {col} {definition}")
@@ -80,7 +83,13 @@ class RequestHistoryStore:
                     if "duplicate column" not in str(e).lower():
                         logger.warning("Unexpected error adding column %s: %s", col, e)
             conn.execute(
+                "UPDATE request_history SET approval_status = 'approved' WHERE approval_status IS NULL OR approval_status = ''"
+            )
+            conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_request_history_requested_by ON request_history(requested_by, requested_at DESC)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_request_history_approval_status ON request_history(approval_status, requested_at)"
             )
             conn.commit()
         finally:
@@ -113,6 +122,8 @@ class RequestHistoryStore:
     def _row_to_record(row: sqlite3.Row | None) -> RequestHistoryRecord | None:
         if row is None:
             return None
+        keys = row.keys()
+        approval = row["approval_status"] if "approval_status" in keys else None
         return RequestHistoryRecord(
             musicbrainz_id=row["musicbrainz_id"],
             artist_name=row["artist_name"],
@@ -126,7 +137,8 @@ class RequestHistoryStore:
             lidarr_album_id=row["lidarr_album_id"],
             monitor_artist=bool(row["monitor_artist"]) if row["monitor_artist"] is not None else False,
             auto_download_artist=bool(row["auto_download_artist"]) if row["auto_download_artist"] is not None else False,
-            requested_by=row["requested_by"] if "requested_by" in row.keys() else None,
+            requested_by=row["requested_by"] if "requested_by" in keys else None,
+            approval_status=approval or "approved",
         )
 
     async def async_record_request(
@@ -141,6 +153,7 @@ class RequestHistoryStore:
         monitor_artist: bool = False,
         auto_download_artist: bool = False,
         requested_by: str | None = None,
+        approval_status: str = "approved",
     ) -> None:
         requested_at = datetime.now(timezone.utc).isoformat()
         normalized_mbid = musicbrainz_id.lower()
@@ -151,8 +164,8 @@ class RequestHistoryStore:
                 INSERT INTO request_history (
                     musicbrainz_id_lower, musicbrainz_id, artist_name, album_title,
                     artist_mbid, year, cover_url, requested_at, completed_at, status, lidarr_album_id,
-                    monitor_artist, auto_download_artist, requested_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', ?, ?, ?, ?)
+                    monitor_artist, auto_download_artist, requested_by, approval_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', ?, ?, ?, ?, ?)
                 ON CONFLICT(musicbrainz_id_lower) DO UPDATE SET
                     musicbrainz_id = excluded.musicbrainz_id,
                     artist_name = excluded.artist_name,
@@ -166,7 +179,8 @@ class RequestHistoryStore:
                     lidarr_album_id = COALESCE(excluded.lidarr_album_id, request_history.lidarr_album_id),
                     monitor_artist = excluded.monitor_artist,
                     auto_download_artist = excluded.auto_download_artist,
-                    requested_by = COALESCE(excluded.requested_by, request_history.requested_by)
+                    requested_by = COALESCE(excluded.requested_by, request_history.requested_by),
+                    approval_status = excluded.approval_status
                 """,
                 (
                     normalized_mbid,
@@ -181,19 +195,21 @@ class RequestHistoryStore:
                     int(monitor_artist),
                     int(auto_download_artist),
                     requested_by,
+                    approval_status,
                 ),
             )
 
         await self._write(operation)
 
     async def async_count_user_requests(self, username: str, days: int) -> int:
-        """Count how many requests this user has made in the last N days."""
+        """Count how many approved requests this user has made in the last N days."""
         from datetime import timedelta
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
         def operation(conn: sqlite3.Connection) -> int:
             row = conn.execute(
-                "SELECT COUNT(*) AS count FROM request_history WHERE requested_by = ? AND requested_at >= ?",
+                "SELECT COUNT(*) AS count FROM request_history "
+                "WHERE requested_by = ? AND requested_at >= ? AND approval_status = 'approved'",
                 (username, cutoff),
             ).fetchone()
             return int(row["count"] if row else 0)
@@ -226,10 +242,11 @@ class RequestHistoryStore:
         await self._write(operation)
 
     async def async_get_active_mbids(self) -> set[str]:
-        """Return the set of MBIDs with active (pending/downloading) requests."""
+        """Return the set of MBIDs with active (pending/downloading) approved requests."""
         def operation(conn: sqlite3.Connection) -> set[str]:
             rows = conn.execute(
-                "SELECT musicbrainz_id_lower FROM request_history WHERE status IN (?, ?)",
+                "SELECT musicbrainz_id_lower FROM request_history "
+                "WHERE status IN (?, ?) AND approval_status = 'approved'",
                 self._ACTIVE_STATUSES,
             ).fetchall()
             return {row["musicbrainz_id_lower"] for row in rows}
@@ -239,7 +256,9 @@ class RequestHistoryStore:
     async def async_get_active_requests(self) -> list[RequestHistoryRecord]:
         def operation(conn: sqlite3.Connection) -> list[RequestHistoryRecord]:
             rows = conn.execute(
-                "SELECT * FROM request_history WHERE status IN (?, ?) ORDER BY requested_at DESC",
+                "SELECT * FROM request_history "
+                "WHERE status IN (?, ?) AND approval_status = 'approved' "
+                "ORDER BY requested_at DESC",
                 self._ACTIVE_STATUSES,
             ).fetchall()
             return [record for row in rows if (record := self._row_to_record(row)) is not None]
@@ -249,8 +268,41 @@ class RequestHistoryStore:
     async def async_get_active_count(self) -> int:
         def operation(conn: sqlite3.Connection) -> int:
             row = conn.execute(
-                "SELECT COUNT(*) AS count FROM request_history WHERE status IN (?, ?)",
+                "SELECT COUNT(*) AS count FROM request_history "
+                "WHERE status IN (?, ?) AND approval_status = 'approved'",
                 self._ACTIVE_STATUSES,
+            ).fetchone()
+            return int(row["count"] if row is not None else 0)
+
+        return await self._read(operation)
+
+    async def async_set_approval_status(self, musicbrainz_id: str, approval_status: str) -> bool:
+        normalized_mbid = musicbrainz_id.lower()
+
+        def operation(conn: sqlite3.Connection) -> bool:
+            cursor = conn.execute(
+                "UPDATE request_history SET approval_status = ? WHERE musicbrainz_id_lower = ?",
+                (approval_status, normalized_mbid),
+            )
+            return cursor.rowcount > 0
+
+        return await self._write(operation)
+
+    async def async_get_pending_approvals(self) -> list[RequestHistoryRecord]:
+        def operation(conn: sqlite3.Connection) -> list[RequestHistoryRecord]:
+            rows = conn.execute(
+                "SELECT * FROM request_history "
+                "WHERE approval_status = 'pending_approval' "
+                "ORDER BY requested_at ASC"
+            ).fetchall()
+            return [record for row in rows if (record := self._row_to_record(row)) is not None]
+
+        return await self._read(operation)
+
+    async def async_get_pending_approval_count(self) -> int:
+        def operation(conn: sqlite3.Connection) -> int:
+            row = conn.execute(
+                "SELECT COUNT(*) AS count FROM request_history WHERE approval_status = 'pending_approval'"
             ).fetchone()
             return int(row["count"] if row is not None else 0)
 

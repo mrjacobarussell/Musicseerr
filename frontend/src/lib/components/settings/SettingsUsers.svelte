@@ -251,7 +251,9 @@
 				</label>
 
 				<label class="form-control">
-					<div class="label"><span class="label-text">New users can request</span></div>
+					<div class="label">
+						<span class="label-text">New users can request without approval</span>
+					</div>
 					<div class="flex items-center gap-3 mt-2">
 						<input
 							type="checkbox"
@@ -259,6 +261,12 @@
 							bind:checked={defaults.can_request}
 						/>
 						<span class="text-sm">{defaults.can_request ? 'Yes' : 'No'}</span>
+					</div>
+					<div class="label">
+						<span class="label-text-alt text-base-content/60">
+							When off, new users can still submit requests — admins review them from the approvals
+							queue.
+						</span>
 					</div>
 				</label>
 			</div>
@@ -310,7 +318,7 @@
 							<tr>
 								<th>User</th>
 								<th>Role</th>
-								<th>Can Request</th>
+								<th>Skip Approval</th>
 								<th>Quota (req/window)</th>
 								<th></th>
 							</tr>

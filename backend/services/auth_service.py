@@ -256,7 +256,13 @@ class AuthService:
         atomic_write_json(self._settings_path, data)
 
     def get_effective_request_settings(self, username: str) -> tuple[bool, Optional[int], int]:
-        """Return (can_request, quota_limit, quota_days). quota_limit=None means unlimited."""
+        """Return (can_request, quota_limit, quota_days). quota_limit=None means unlimited.
+
+        `can_request=False` no longer blocks submission outright — it now means
+        requests from the user will be routed into the admin approval queue
+        (see `POST /requests/new` and `/admin/requests/pending`). Admins always
+        get `can_request=True`.
+        """
         user = None
         for u in self._load_users():
             if u["username"].lower() == username.lower():
