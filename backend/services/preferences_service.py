@@ -40,7 +40,7 @@ class PreferencesService:
         self._settings = settings
         self._config_path = settings.config_file_path
         self._config_cache: Optional[dict] = None
-        self._cache_lock = threading.Lock()
+        self._cache_lock = threading.RLock()
         self._migrate_musicbrainz_settings()
         self._ensure_instance_id()
 
