@@ -2,10 +2,9 @@
 
 <img src="Images/logo_wide.png" alt="MusicSeerr" width="400" />
 
+Forked from [habirabbu/musicseerr](https://github.com/habirabbu/musicseerr)
+
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/habirabbu/musicseerr/pkgs/container/musicseerr)
-[![Discord](https://img.shields.io/discord/1356702267809808404?label=discord&logo=discord&logoColor=white)](https://discord.gg/B5suDg7gu2)
-[![Docs](https://img.shields.io/badge/docs-musicseerr.com-blue)](https://musicseerr.com/)
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/jacobrussell_medic)
 
