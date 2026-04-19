@@ -7,7 +7,7 @@
 [![Discord](https://img.shields.io/discord/1356702267809808404?label=discord&logo=discord&logoColor=white)](https://discord.gg/B5suDg7gu2)
 [![Docs](https://img.shields.io/badge/docs-musicseerr.com-blue)](https://musicseerr.com/)
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M41URGJO)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/jacobrussell_medic)
 
 </div>
 
@@ -315,7 +315,7 @@ For questions, help, or just to chat, join the [Discord](https://discord.gg/B5su
 
 If you find MusicSeerr useful, consider supporting development:
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M41URGJO)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/jacobrussell_medic)
 
 ---
 
