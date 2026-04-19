@@ -48,7 +48,7 @@ You need Docker and a running [Lidarr](https://lidarr.audio/) instance with an A
 ```yaml
 services:
   musicseerr:
-    image: ghcr.io/habirabbu/musicseerr:latest
+    image: ghcr.io/mrjacobarussell/musicseerr:latest
     container_name: musicseerr
     environment:
       - PUID=1000            # Run `id` on your host to find your user/group ID
@@ -308,11 +308,9 @@ See the [CONTRIBUTING](CONTRIBUTING.md) guide for instructions on setting up a d
 
 ## Support
 
-Documentation is at [musicseerr.com](https://musicseerr.com/).
+Bug reports and feature requests go on [GitHub Issues](https://github.com/mrjacobarussell/Musicseerr/issues).
 
-For questions, help, or just to chat, join the [Discord](https://discord.gg/B5suDg7gu2). Bug reports and feature requests go on [GitHub Issues](https://github.com/habirabbu/musicseerr/issues).
-
-If you find MusicSeerr useful, consider supporting development:
+If you find this fork useful, consider supporting development:
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/jacobrussell_medic)
 
