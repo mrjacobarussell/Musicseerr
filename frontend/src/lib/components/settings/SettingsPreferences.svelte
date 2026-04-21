@@ -133,12 +133,22 @@
 		lidarrSyncing = true;
 		lidarrMessage = '';
 		try {
+			const saved = await preferencesStore.save(preferences);
+			if (!saved) {
+				lidarrMessage = 'Failed to save preferences before syncing to Lidarr';
+				return;
+			}
+
 			const params = selectedProfileId != null ? `?profile_id=${selectedProfileId}` : '';
 			lidarrPrefs = await api.put<LidarrMetadataProfilePreferences>(
 				`/api/v1/settings/lidarr/metadata-profile/preferences${params}`,
 				preferences
 			);
 			lidarrMessage = 'Lidarr metadata profile updated successfully';
+
+			await invalidateQueriesWithPersister({ queryKey: ArtistQueryKeyFactory.prefix });
+			window.dispatchEvent(new CustomEvent('search-refresh'));
+
 			setTimeout(() => {
 				lidarrMessage = '';
 			}, 5000);
@@ -177,10 +187,10 @@
 		const success = await preferencesStore.save(preferences);
 
 		if (success) {
-			saveMessage = 'Settings saved Artist pages and search results will refresh automatically.';
+			saveMessage = 'Saved. Artist pages and search results will refresh automatically.';
 
 			// Invalidate artist queries since these preferences affect which releases are shown on artist pages and search results
-			invalidateQueriesWithPersister({ queryKey: ArtistQueryKeyFactory.prefix });
+			await invalidateQueriesWithPersister({ queryKey: ArtistQueryKeyFactory.prefix });
 			window.dispatchEvent(new CustomEvent('search-refresh'));
 
 			setTimeout(() => {

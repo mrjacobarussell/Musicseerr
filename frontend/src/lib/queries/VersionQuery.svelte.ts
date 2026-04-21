@@ -30,7 +30,8 @@ export const getVersionQuery = () =>
 		staleTime: CACHE_TTL.VERSION_INFO,
 		queryKey: VersionQueryKeyFactory.info(),
 		queryFn: ({ signal }) => api.global.get<VersionInfo>(API.version.info(), { signal }),
-		refetchOnWindowFocus: false
+		refetchOnWindowFocus: false,
+		refetchOnMount: 'always'
 	}));
 
 export const getUpdateCheckQuery = () =>

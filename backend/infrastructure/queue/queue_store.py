@@ -64,6 +64,20 @@ class QueueStore:
             finally:
                 conn.close()
 
+    def enqueue_many(self, items: list[tuple[str, str]]) -> int:
+        """Batch-insert jobs. items = [(job_id, album_mbid), ...]. Returns count inserted (skips duplicates)."""
+        with self._write_lock:
+            conn = self._connect()
+            try:
+                cursor = conn.executemany(
+                    "INSERT OR IGNORE INTO pending_jobs (id, album_mbid) VALUES (?, ?)",
+                    items,
+                )
+                conn.commit()
+                return cursor.rowcount
+            finally:
+                conn.close()
+
     def dequeue(self, job_id: str) -> None:
         with self._write_lock:
             conn = self._connect()

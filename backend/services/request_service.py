@@ -1,8 +1,14 @@
 import logging
+from datetime import datetime, timezone
 from repositories.protocols import LidarrRepositoryProtocol
 from infrastructure.queue.request_queue import RequestQueue
 from infrastructure.persistence.request_history import RequestHistoryStore
-from api.v1.schemas.request import QueueStatusResponse, RequestAcceptedResponse
+from api.v1.schemas.request import (
+    BatchCancelResponse,
+    BatchRequestResponse,
+    QueueStatusResponse,
+    RequestAcceptedResponse,
+)
 from core.exceptions import ExternalServiceError
 
 logger = logging.getLogger(__name__)
@@ -91,6 +97,75 @@ class RequestService:
             status="pending",
         )
     
+    async def request_batch(
+        self,
+        items: list[dict],
+        monitor_artist: bool = False,
+        auto_download_artist: bool = False,
+    ) -> BatchRequestResponse:
+        """Request multiple albums at once. Returns counts of requested, skipped, and overflow."""
+        if not self._lidarr_repo.is_configured():
+            raise ExternalServiceError("Lidarr isn't configured. Add an API key in Settings before requesting albums.")
+
+        try:
+            active = await self._request_history.async_get_active_mbids()
+            new_items = [
+                item for item in items
+                if item["musicbrainz_id"].lower() not in active
+            ]
+            skipped = len(items) - len(new_items)
+
+            if not new_items:
+                return BatchRequestResponse(
+                    success=True,
+                    message="All albums already requested",
+                    requested=0,
+                    skipped=skipped,
+                )
+
+            await self._request_history.async_bulk_record_requests(
+                new_items,
+                monitor_artist=monitor_artist,
+                auto_download_artist=auto_download_artist,
+            )
+
+            mbids = [item["musicbrainz_id"] for item in new_items]
+            enqueued, overflow = await self._request_queue.enqueue_many(mbids)
+
+            return BatchRequestResponse(
+                success=True,
+                message=f"Batch request accepted: {enqueued} enqueued",
+                requested=enqueued + overflow,
+                skipped=skipped,
+                overflow=overflow,
+            )
+        except ExternalServiceError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            logger.error("Batch request failed: %s", e)
+            raise ExternalServiceError(f"Batch request failed: {e}")
+
+    async def cancel_batch(self, musicbrainz_ids: list[str]) -> BatchCancelResponse:
+        """Cancel multiple requests. Uses RequestQueue.cancel() for each."""
+        cancelled = 0
+        failed = 0
+        for mbid in musicbrainz_ids:
+            try:
+                await self._request_queue.cancel(mbid)
+                now_iso = datetime.now(timezone.utc).isoformat()
+                await self._request_history.async_update_status(
+                    mbid, "cancelled", completed_at=now_iso,
+                )
+                cancelled += 1
+            except Exception:  # noqa: BLE001
+                failed += 1
+        return BatchCancelResponse(
+            success=cancelled > 0,
+            cancelled=cancelled,
+            failed=failed,
+            message=f"Cancelled {cancelled} requests" + (f", {failed} failed" if failed else ""),
+        )
+
     def get_queue_status(self) -> QueueStatusResponse:
         status = self._request_queue.get_status()
         return QueueStatusResponse(

@@ -45,6 +45,8 @@ You need Docker and a running [Lidarr](https://lidarr.audio/) instance with an A
 
 ### 1. Create a docker-compose.yml
 
+Images are available on [GHCR](https://github.com/mrjacobarussell/Musicseerr/pkgs/container/musicseerr).
+
 ```yaml
 services:
   musicseerr:

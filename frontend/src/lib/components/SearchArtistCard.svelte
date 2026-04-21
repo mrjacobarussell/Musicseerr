@@ -5,6 +5,7 @@
 	import { getListenTitle } from '$lib/utils/enrichment';
 	import { Music2 } from 'lucide-svelte';
 	import ArtistImage from './ArtistImage.svelte';
+	import ArtistCardDownloadButton from './ArtistCardDownloadButton.svelte';
 
 	interface Props {
 		artist: Artist;
@@ -18,8 +19,9 @@
 
 <a
 	href={artistHref(artist.musicbrainz_id)}
-	class="card bg-base-100 w-full shadow-sm shrink-0 cursor-pointer transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(174,213,242,0.15)]"
+	class="card bg-base-100 w-full shadow-sm shrink-0 cursor-pointer transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(174,213,242,0.15)] group relative"
 >
+	<ArtistCardDownloadButton artistName={artist.title} artistMbid={artist.musicbrainz_id} />
 	<figure class="flex justify-center pt-4">
 		<ArtistImage
 			mbid={artist.musicbrainz_id}

@@ -5,6 +5,7 @@ from api.v1.schemas.settings import (
     ListenBrainzConnectionSettings,
     LastFmConnectionSettings,
     PrimaryMusicSourceSettings,
+    HomeSettings,
 )
 from api.v1.schemas.search import SearchResult
 from repositories.listenbrainz_models import (
@@ -363,7 +364,7 @@ class TestDiscoverQueuePersonalization:
             return_value=[
                 {
                     "release_group_mbid": "fresh-rg-1",
-                    "title": "Fresh Album",
+                    "release_name": "Fresh Album",
                     "artist_credit_name": "Fresh Artist",
                     "artist_mbids": ["fresh-artist-1"],
                 }
@@ -656,3 +657,98 @@ class TestDiscoverPerformanceHotpaths:
         assert section is not None
         assert {item.mbid for item in section.items} == {"artist-rock", "artist-shoe"}
         assert section.source == "lastfm"
+
+
+class TestShowGloballyTrendingSetting:
+    @pytest.mark.asyncio
+    async def test_lb_trending_skipped_when_disabled(self):
+        service, lb_repo, lfm_repo, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_globally_trending=False)
+
+        response = await service.build_discover_data(source="listenbrainz")
+
+        lb_repo.get_sitewide_top_artists.assert_not_awaited()
+        assert response.globally_trending is None
+
+    @pytest.mark.asyncio
+    async def test_lfm_trending_skipped_when_disabled(self):
+        service, lb_repo, lfm_repo, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="lastfm"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_globally_trending=False)
+
+        response = await service.build_discover_data(source="lastfm")
+
+        lfm_repo.get_global_top_artists.assert_not_awaited()
+        assert response.globally_trending is None
+
+    @pytest.mark.asyncio
+    async def test_trending_dispatched_when_enabled(self):
+        service, lb_repo, _, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_globally_trending=True)
+
+        await service.build_discover_data(source="listenbrainz")
+
+        lb_repo.get_sitewide_top_artists.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_other_sections_unaffected_when_disabled(self):
+        service, _, lfm_repo, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_globally_trending=False)
+
+        response = await service.build_discover_data(source="listenbrainz")
+
+        assert response.globally_trending is None
+        assert response.service_prompts is not None
+
+
+class TestDailyMixesWiring:
+    """Integration: verify build_discover_data() populates response.daily_mixes
+    via post_tasks wiring (Phase 5 acceptance)."""
+
+    @pytest.mark.asyncio
+    async def test_daily_mixes_populated_via_post_tasks(self, monkeypatch):
+        from api.v1.schemas.home import HomeSection
+
+        service, _lb, _lfm, _prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+        stub_sections = [
+            HomeSection(title="Your Rock Mix", type="albums", items=[], source="listenbrainz"),
+            HomeSection(title="Your Pop Mix", type="albums", items=[], source="listenbrainz"),
+        ]
+
+        async def fake_daily_mix(resolved_source, library_mbids=None):
+            assert resolved_source == "listenbrainz"
+            return stub_sections
+
+        monkeypatch.setattr(
+            service._homepage, "_build_daily_mix_sections", fake_daily_mix
+        )
+
+        response = await service.build_discover_data(source="listenbrainz")
+
+        assert response.daily_mixes == stub_sections
+
+    @pytest.mark.asyncio
+    async def test_daily_mixes_empty_when_builder_returns_none(self, monkeypatch):
+        service, _lb, _lfm, _prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+
+        async def fake_daily_mix(resolved_source, library_mbids=None):
+            return None
+
+        monkeypatch.setattr(
+            service._homepage, "_build_daily_mix_sections", fake_daily_mix
+        )
+
+        response = await service.build_discover_data(source="listenbrainz")
+
+        assert response.daily_mixes == []

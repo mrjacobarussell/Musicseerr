@@ -11,6 +11,7 @@ from infrastructure.cache.cache_keys import (
     JELLYFIN_PREFIX,
     LB_PREFIX,
     LFM_PREFIX,
+    LIDARR_ARTIST_ALBUMS_PREFIX,
     LOCAL_FILES_PREFIX,
     SOURCE_RESOLUTION_PREFIX,
     musicbrainz_prefixes,
@@ -36,13 +37,14 @@ async def test_clear_musicbrainz_cache():
 
     mb_keys = [f"{p}dummy" for p in musicbrainz_prefixes()]
     extra_keys = [f"{ARTIST_INFO_PREFIX}art1", f"{ALBUM_INFO_PREFIX}alb1"]
+    lidarr_keys = [f"{LIDARR_ARTIST_ALBUMS_PREFIX}mbid1", f"{LIDARR_ARTIST_ALBUMS_PREFIX}mbid2"]
     unrelated = ["unrelated:key"]
-    await _populate(cache, mb_keys + extra_keys + unrelated)
+    await _populate(cache, mb_keys + extra_keys + lidarr_keys + unrelated)
 
     cleared = await service.clear_caches_for_preference_change()
 
-    assert cleared == len(mb_keys) + len(extra_keys)
-    for key in mb_keys + extra_keys:
+    assert cleared == len(mb_keys) + len(extra_keys) + len(lidarr_keys)
+    for key in mb_keys + extra_keys + lidarr_keys:
         assert await cache.get(key) is None
     assert await cache.get("unrelated:key") == "v"
 
@@ -115,12 +117,12 @@ async def test_unrelated_keys_survive():
     survivor_keys = [
         f"{LOCAL_FILES_PREFIX}scan",
         f"{SOURCE_RESOLUTION_PREFIX}:t1",
-        f"{JELLYFIN_PREFIX}lib",
+        f"{LIDARR_ARTIST_ALBUMS_PREFIX}mbid1",
     ]
     target_keys = [f"{p}x" for p in musicbrainz_prefixes()]
     await _populate(cache, survivor_keys + target_keys)
 
-    await service.clear_caches_for_preference_change()
+    await service.clear_home_cache()
 
     for key in survivor_keys:
         assert await cache.get(key) == "v", f"Key {key!r} was incorrectly cleared"

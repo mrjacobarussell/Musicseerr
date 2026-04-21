@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     config_file_path: Path = Field(default=Path("/app/config/config.json"))
     audiodb_api_key: str = Field(default="123")
     audiodb_premium: bool = Field(default=False, description="Set to true if using a premium AudioDB API key")
+    instance_id: str = Field(default="", description="Auto-generated per-instance UUID for User-Agent differentiation")
     
     @field_validator("log_level")
     @classmethod
@@ -121,7 +122,8 @@ class Settings(BaseSettings):
         return self
     
     def get_user_agent(self) -> str:
-        return f"Musicseerr/1.0 ({self.contact_email}; https://www.musicseerr.com)"
+        id_part = self.instance_id[:8] if self.instance_id else "unknown"
+        return f"Musicseerr/1.0 ({id_part}; {self.contact_email}; https://www.musicseerr.com)"
 
     def load_from_file(self) -> None:
         if not self.config_file_path.exists():

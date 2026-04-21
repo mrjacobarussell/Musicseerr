@@ -121,7 +121,11 @@ function createPlayerStore() {
 	});
 	const currentQueueItem = $derived(queue.length > 0 ? queue[currentIndex] : null);
 	const queueLength = $derived(queue.length);
-	const currentTrackNumber = $derived(currentIndex + 1);
+	const currentTrackNumber = $derived(
+		shuffleEnabled && shuffleOrder.length > 0
+			? shuffleOrder.indexOf(currentIndex) + 1 || currentIndex + 1
+			: currentIndex + 1
+	);
 
 	const progressReporter = createProgressReporter(
 		reportJellyfinProgress,
@@ -591,14 +595,25 @@ function createPlayerStore() {
 
 		regenerateShuffleOrder(): void {
 			if (!shuffleEnabled || queue.length === 0) return;
-			const allIndices = Array.from({ length: queue.length }, (_, i) => i);
-			const upcoming = allIndices.filter((i) => i !== currentIndex && i > currentIndex);
-			const played = allIndices.filter((i) => i < currentIndex);
-			for (let i = upcoming.length - 1; i > 0; i--) {
+
+			// Find current position in shuffle order (not raw queue index)
+			const currentShufflePos = shuffleOrder.indexOf(currentIndex);
+
+			// Keep everything up to and including current position (played + now playing)
+			const kept =
+				currentShufflePos >= 0 ? shuffleOrder.slice(0, currentShufflePos + 1) : [currentIndex];
+			const keptSet = new Set(kept);
+
+			// Everything else (including newly-appended indices) gets reshuffled
+			const remaining = Array.from({ length: queue.length }, (_, i) => i).filter(
+				(i) => !keptSet.has(i)
+			);
+			for (let i = remaining.length - 1; i > 0; i--) {
 				const j = Math.floor(Math.random() * (i + 1));
-				[upcoming[i], upcoming[j]] = [upcoming[j], upcoming[i]];
+				[remaining[i], remaining[j]] = [remaining[j], remaining[i]];
 			}
-			shuffleOrder = [...played, currentIndex, ...upcoming];
+
+			shuffleOrder = [...kept, ...remaining];
 			persist();
 		},
 

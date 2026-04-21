@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ArtistImage from './ArtistImage.svelte';
-	import { Music2 } from 'lucide-svelte';
+	import ArtistCardDownloadButton from './ArtistCardDownloadButton.svelte';
+	import { Users } from 'lucide-svelte';
 
 	interface Props {
 		name: string;
@@ -16,9 +17,12 @@
 {#if href}
 	<a
 		{href}
-		class="card bg-base-100 w-full shadow-sm shrink-0 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(174,213,242,0.15)] focus-visible:ring-2 focus-visible:ring-primary"
+		class="card bg-base-100 w-full shadow-sm shrink-0 transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(174,213,242,0.15)] focus-visible:ring-2 focus-visible:ring-primary group relative"
 		aria-label="Open {name}"
 	>
+		{#if mbid}
+			<ArtistCardDownloadButton artistName={name} artistMbid={mbid} />
+		{/if}
 		<figure class="aspect-square p-3">
 			{#if mbid}
 				<ArtistImage {mbid} alt={name} size="full" remoteUrl={imageUrl} className="w-full h-full" />
@@ -31,9 +35,9 @@
 				/>
 			{:else}
 				<div
-					class="flex h-full w-full items-center justify-center rounded-full bg-base-200 text-base-content/30"
+					class="flex h-full w-full items-center justify-center rounded-full bg-base-200 text-base-content/20"
 				>
-					<Music2 class="h-12 w-12" />
+					<Users class="h-12 w-12" />
 				</div>
 			{/if}
 		</figure>
@@ -58,9 +62,9 @@
 				/>
 			{:else}
 				<div
-					class="flex h-full w-full items-center justify-center rounded-full bg-base-200 text-base-content/30"
+					class="flex h-full w-full items-center justify-center rounded-full bg-base-200 text-base-content/20"
 				>
-					<Music2 class="h-12 w-12" />
+					<Users class="h-12 w-12" />
 				</div>
 			{/if}
 		</figure>

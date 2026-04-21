@@ -2,7 +2,6 @@ import asyncio
 import logging
 import msgspec
 from fastapi import APIRouter, Depends, HTTPException
-import msgspec
 from api.v1.schemas.settings import (
     UserPreferences,
     LidarrSettings,

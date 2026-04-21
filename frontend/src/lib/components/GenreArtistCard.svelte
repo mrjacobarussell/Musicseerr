@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Check } from 'lucide-svelte';
 	import ArtistImage from '$lib/components/ArtistImage.svelte';
+	import ArtistCardDownloadButton from '$lib/components/ArtistCardDownloadButton.svelte';
 	import type { HomeArtist } from '$lib/types';
 
 	interface Props {
@@ -21,11 +22,14 @@
 	onkeydown={href || !onclick ? undefined : (e: KeyboardEvent) => e.key === 'Enter' && onclick()}
 	role={href || !onclick ? undefined : 'button'}
 	tabindex={href || !onclick ? undefined : 0}
-	class="card bg-base-200/50 hover:bg-base-200 hover:scale-[1.03] hover:shadow-lg transition-all duration-200 group {href ||
+	class="card bg-base-200/50 hover:bg-base-200 hover:scale-[1.03] hover:shadow-lg transition-all duration-200 group relative {href ||
 	onclick
 		? 'cursor-pointer'
 		: 'cursor-default'}"
 >
+	{#if artist.mbid}
+		<ArtistCardDownloadButton artistName={artist.name} artistMbid={artist.mbid} />
+	{/if}
 	<figure class="flex justify-center pt-4 relative">
 		<ArtistImage mbid={artist.mbid || ''} alt={artist.name} size="md" lazy={true} />
 		{#if showLibraryBadge || artist.in_library}

@@ -216,6 +216,62 @@ class RequestHistoryStore:
 
         return await self._read(operation)
 
+    async def async_bulk_record_requests(
+        self,
+        items: list[dict],
+        monitor_artist: bool = False,
+        auto_download_artist: bool = False,
+    ) -> int:
+        """Bulk insert/upsert request history records in a single transaction. Returns count inserted."""
+        requested_at = datetime.now(timezone.utc).isoformat()
+        monitor_int = int(monitor_artist)
+        auto_download_int = int(auto_download_artist)
+
+        rows = [
+            (
+                item["musicbrainz_id"].lower(),
+                item["musicbrainz_id"],
+                item.get("artist_name", "Unknown"),
+                item.get("album_title", "Unknown"),
+                item.get("artist_mbid"),
+                item.get("year"),
+                item.get("cover_url"),
+                requested_at,
+                None,  # lidarr_album_id
+                monitor_int,
+                auto_download_int,
+            )
+            for item in items
+        ]
+
+        def operation(conn: sqlite3.Connection) -> int:
+            conn.executemany(
+                """
+                INSERT INTO request_history (
+                    musicbrainz_id_lower, musicbrainz_id, artist_name, album_title,
+                    artist_mbid, year, cover_url, requested_at, completed_at, status, lidarr_album_id,
+                    monitor_artist, auto_download_artist
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'pending', ?, ?, ?)
+                ON CONFLICT(musicbrainz_id_lower) DO UPDATE SET
+                    musicbrainz_id = excluded.musicbrainz_id,
+                    artist_name = excluded.artist_name,
+                    album_title = excluded.album_title,
+                    artist_mbid = excluded.artist_mbid,
+                    year = excluded.year,
+                    cover_url = COALESCE(excluded.cover_url, request_history.cover_url),
+                    requested_at = excluded.requested_at,
+                    completed_at = NULL,
+                    status = 'pending',
+                    lidarr_album_id = COALESCE(excluded.lidarr_album_id, request_history.lidarr_album_id),
+                    monitor_artist = excluded.monitor_artist,
+                    auto_download_artist = excluded.auto_download_artist
+                """,
+                rows,
+            )
+            return len(rows)
+
+        return await self._write(operation)
+
     async def async_get_record(self, musicbrainz_id: str) -> RequestHistoryRecord | None:
         normalized_mbid = musicbrainz_id.lower()
 

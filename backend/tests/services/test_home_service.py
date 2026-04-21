@@ -5,6 +5,7 @@ from api.v1.schemas.settings import (
     ListenBrainzConnectionSettings,
     LastFmConnectionSettings,
     PrimaryMusicSourceSettings,
+    HomeSettings,
 )
 from api.v1.schemas.library import LibraryAlbum
 from repositories.protocols import ListenBrainzReleaseGroup
@@ -291,3 +292,86 @@ class TestBuildServicePrompts:
         )
         lb_prompt = next(p for p in prompts if p.service == "listenbrainz")
         assert "last.fm" in lb_prompt.description.lower()
+
+
+class TestShowWhatsHotSetting:
+    @pytest.mark.asyncio
+    async def test_lb_trending_tasks_skipped_when_disabled(self):
+        service, lb_repo, lfm_repo, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_whats_hot=False)
+
+        response = await service.get_home_data("listenbrainz")
+
+        lb_repo.get_sitewide_top_artists.assert_not_awaited()
+        lb_repo.get_sitewide_top_release_groups.assert_not_awaited()
+        assert response.trending_artists is None
+        assert response.popular_albums is None
+
+    @pytest.mark.asyncio
+    async def test_lfm_trending_task_skipped_when_disabled(self):
+        service, lb_repo, lfm_repo, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="lastfm"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_whats_hot=False)
+
+        response = await service.get_home_data("lastfm")
+
+        lfm_repo.get_global_top_artists.assert_not_awaited()
+        assert response.trending_artists is None
+
+    @pytest.mark.asyncio
+    async def test_trending_dispatched_when_enabled(self):
+        service, lb_repo, _, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_whats_hot=True)
+
+        await service.get_home_data("listenbrainz")
+
+        lb_repo.get_sitewide_top_artists.assert_awaited_once()
+        lb_repo.get_sitewide_top_release_groups.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_non_trending_sections_unaffected_when_disabled(self):
+        service, _, _, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_whats_hot=False)
+
+        response = await service.get_home_data("listenbrainz")
+
+        assert response.trending_artists is None
+        assert response.popular_albums is None
+        assert response.integration_status is not None
+
+    @pytest.mark.asyncio
+    async def test_cached_response_filtered_when_disabled(self):
+        from api.v1.schemas.home import HomeResponse, HomeSection, HomeArtist, HomeIntegrationStatus
+
+        service, _, _, prefs = _make_service(
+            lb_enabled=True, lfm_enabled=True, primary_source="listenbrainz"
+        )
+        prefs.get_home_settings.return_value = HomeSettings(show_whats_hot=False)
+
+        cached = HomeResponse(
+            integration_status=HomeIntegrationStatus(
+                listenbrainz=True, jellyfin=False, lidarr=False,
+                youtube=False, lastfm=True,
+            ),
+            trending_artists=HomeSection(
+                title="Trending", type="artist",
+                items=[HomeArtist(name="Artist1")],
+            ),
+            popular_albums=HomeSection(title="Popular", type="album", items=[]),
+        )
+        mock_cache = AsyncMock()
+        mock_cache.get = AsyncMock(return_value=cached)
+        service._memory_cache = mock_cache
+
+        response = await service.get_home_data("listenbrainz")
+
+        assert response.trending_artists is None
+        assert response.popular_albums is None
+        assert response.integration_status is not None

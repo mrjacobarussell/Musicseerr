@@ -4,6 +4,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 
+_NO_CACHE_HEADERS = {"Cache-Control": "no-cache"}
+
+
 def mount_frontend(app: FastAPI):
     backend_static = Path(__file__).parent / "static"
     frontend_root = Path(__file__).resolve().parents[1] / "frontend"
@@ -83,7 +86,7 @@ def mount_frontend(app: FastAPI):
     @app.get("/")
     async def serve_root():
         if index_html.exists():
-            return FileResponse(index_html)
+            return FileResponse(index_html, headers=_NO_CACHE_HEADERS)
         raise HTTPException(status_code=404, detail="Frontend not built yet")
 
     @app.get("/{full_path:path}")
@@ -91,5 +94,5 @@ def mount_frontend(app: FastAPI):
         if full_path.startswith("api"):
             raise HTTPException(status_code=404, detail="API route not found")
         if index_html.exists():
-            return FileResponse(index_html)
+            return FileResponse(index_html, headers=_NO_CACHE_HEADERS)
         raise HTTPException(status_code=404, detail="Frontend not built yet")

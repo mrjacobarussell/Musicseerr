@@ -32,6 +32,7 @@
 		onRequest: (id: string, title?: string) => void;
 		onToggleCollapse: () => void;
 		onRemoved?: ((result: RemoveResult) => void) | undefined;
+		onDownloadAll?: (() => void) | undefined;
 	}
 
 	let {
@@ -43,8 +44,19 @@
 		artistName = 'Unknown',
 		onRequest,
 		onToggleCollapse,
-		onRemoved = undefined
+		onRemoved = undefined,
+		onDownloadAll = undefined
 	}: Props = $props();
+
+	let notInLibraryCount = $derived(
+		releases.filter(
+			(r) =>
+				!r.in_library &&
+				!libraryStore.isInLibrary(r.id) &&
+				!r.requested &&
+				!libraryStore.isRequested(r.id)
+		).length
+	);
 
 	function handleDeleted(rg: Release, result: RemoveResult) {
 		rg.in_library = false;
@@ -76,15 +88,30 @@
 
 <div class="mb-6">
 	<div class="bg-base-300 rounded-t-box">
-		<button
-			class="w-full flex items-center justify-between px-4 py-3 hover:bg-base-content/5 transition-colors rounded-t-box"
-			onclick={onToggleCollapse}
-		>
-			<span class="text-xl sm:text-2xl font-bold">{title} ({releases.length})</span>
-			<ChevronDown
-				class="h-6 w-6 transition-transform duration-200 {collapsed ? '' : 'rotate-180'}"
-			/>
-		</button>
+		<div class="flex items-center">
+			<button
+				class="flex-1 flex items-center justify-between px-4 py-3 hover:bg-base-content/5 transition-colors rounded-tl-box"
+				onclick={onToggleCollapse}
+			>
+				<span class="text-xl sm:text-2xl font-bold">{title} ({releases.length})</span>
+				<ChevronDown
+					class="h-6 w-6 transition-transform duration-200 {collapsed ? '' : 'rotate-180'}"
+				/>
+			</button>
+			{#if onDownloadAll && notInLibraryCount > 0}
+				<button
+					class="btn btn-ghost btn-sm gap-1.5 mr-2 text-accent hover:bg-accent/10"
+					onclick={(e) => {
+						e.stopPropagation();
+						onDownloadAll?.();
+					}}
+					title="Download all {title.toLowerCase()}"
+				>
+					<Download class="h-4 w-4" />
+					<span class="hidden sm:inline text-xs">Download All</span>
+				</button>
+			{/if}
+		</div>
 	</div>
 	{#if !collapsed}
 		<div class="border border-base-300 border-t-0 rounded-b-box bg-base-200/30">

@@ -18,6 +18,23 @@ export function isMusicSource(value: unknown): value is MusicSource {
 	return value === 'listenbrainz' || value === 'lastfm';
 }
 
+/**
+ * Migrate old raw-string localStorage source values to JSON format.
+ * Before v1.3.0, setPageSource() stored raw strings (e.g. `listenbrainz`).
+ * PersistedState expects JSON (e.g. `"listenbrainz"`). Must run before
+ * any PersistedState constructor reads these keys.
+ */
+export function migratePageSourceKeys(): void {
+	if (!browser) return;
+	for (const key of Object.values(PAGE_SOURCE_KEYS)) {
+		const raw = localStorage.getItem(key);
+		if (raw === null) continue;
+		if (isMusicSource(raw)) {
+			localStorage.setItem(key, JSON.stringify(raw));
+		}
+	}
+}
+
 function readCachedSource(): MusicSource {
 	if (!browser) return DEFAULT_SOURCE;
 	const stored = localStorage.getItem(CACHED_SOURCE_KEY);
@@ -105,13 +122,23 @@ function createMusicSourceStore() {
 	function getPageSource(page: MusicSourcePage): MusicSource {
 		const fallbackSource = getSource();
 		if (!browser) return fallbackSource;
-		const storedSource = localStorage.getItem(getPageStorageKey(page));
-		return isMusicSource(storedSource) ? storedSource : fallbackSource;
+		const raw = localStorage.getItem(getPageStorageKey(page));
+		if (raw === null) return fallbackSource;
+		// Handle JSON-encoded values (new format)
+		try {
+			const parsed: unknown = JSON.parse(raw);
+			if (isMusicSource(parsed)) return parsed;
+		} catch {
+			// Fall through to raw check
+		}
+		// Handle raw string values (old format)
+		if (isMusicSource(raw)) return raw;
+		return fallbackSource;
 	}
 
 	function setPageSource(page: MusicSourcePage, source: MusicSource): void {
 		if (!browser) return;
-		localStorage.setItem(getPageStorageKey(page), source);
+		localStorage.setItem(getPageStorageKey(page), JSON.stringify(source));
 	}
 
 	return {

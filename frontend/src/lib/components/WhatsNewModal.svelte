@@ -3,43 +3,58 @@
 	import { isWhatsNewDismissed, dismissWhatsNew } from '$lib/stores/version.svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { X, Sparkles, ExternalLink } from 'lucide-svelte';
+	import type { GitHubRelease } from '$lib/queries/VersionQuery.svelte';
 
 	interface Props {
 		currentVersion: string | null;
 		buildDate: string | null;
-		releaseTag: string | null;
-		releaseBody: string | null;
-		releaseName: string | null;
+		releases: GitHubRelease[];
 	}
-	let { currentVersion, buildDate, releaseTag, releaseBody, releaseName }: Props = $props();
+	let { currentVersion, buildDate, releases }: Props = $props();
 
 	let dialogEl: HTMLDialogElement | undefined = $state();
-	let renderedBody = $state('');
+	let renderedSections: { tag: string; name: string | null; html: string }[] = $state([]);
 
 	const isDev = $derived(currentVersion === 'dev' || currentVersion === 'hosting-local');
+	const latestRelease = $derived(releases.length > 0 ? releases[0] : null);
 
 	// In dev: key dismissal to build_date so modal shows once per rebuild, not every refresh
-	// In prod: key to release tag so modal shows once per new version
-	const dismissKey = $derived(isDev ? (buildDate ?? 'dev') : (releaseTag ?? currentVersion));
+	// In prod: key to latest release tag so modal re-shows when a new patch lands
+	const dismissKey = $derived(
+		isDev ? (buildDate ?? 'dev') : (latestRelease?.tag_name ?? currentVersion)
+	);
+
+	const hasContent = $derived(releases.some((r) => r.body && r.body.trim().length > 0));
 
 	const shouldShow = $derived(
-		currentVersion !== null &&
-			dismissKey !== null &&
-			releaseBody !== null &&
-			releaseBody.trim().length > 0 &&
-			!isWhatsNewDismissed(dismissKey)
+		currentVersion !== null && dismissKey !== null && hasContent && !isWhatsNewDismissed(dismissKey)
 	);
 
 	$effect(() => {
-		if (releaseBody && releaseBody.trim()) {
-			renderMarkdown(releaseBody)
-				.then((html) => {
-					renderedBody = html;
-				})
-				.catch(() => {
-					renderedBody = '';
-				});
+		let aborted = false;
+		const withContent = releases.filter((r) => r.body && r.body.trim());
+		if (withContent.length === 0) {
+			renderedSections = [];
+			return;
 		}
+
+		Promise.all(
+			withContent.map(async (r) => ({
+				tag: r.tag_name,
+				name: r.name,
+				html: await renderMarkdown(r.body!)
+			}))
+		)
+			.then((sections) => {
+				if (!aborted) renderedSections = sections;
+			})
+			.catch(() => {
+				if (!aborted) renderedSections = [];
+			});
+
+		return () => {
+			aborted = true;
+		};
 	});
 
 	$effect(() => {
@@ -56,7 +71,7 @@
 	}
 
 	function onDialogClose() {
-		if (dismissKey) {
+		if (dismissKey && !isWhatsNewDismissed(dismissKey)) {
 			dismissWhatsNew(dismissKey);
 		}
 	}
@@ -102,22 +117,28 @@
 
 		<div class="divider my-0 opacity-10"></div>
 
-		{#if releaseName}
-			<p class="text-base-content mt-4 mb-4 text-sm font-semibold border-l-2 border-accent/50 pl-3">
-				{releaseName}
-			</p>
-		{/if}
-
-		{#if renderedBody}
+		{#if renderedSections.length > 0}
 			<div
-				class="whats-new-content release-notes-prose prose prose-sm max-h-[55vh] max-w-none text-base-content/75 overflow-y-auto rounded-lg border border-base-content/5 bg-base-100/50 p-4 {releaseName
-					? ''
-					: 'mt-4'}"
+				class="whats-new-content release-notes-prose max-h-[55vh] max-w-none overflow-y-auto rounded-lg border border-base-content/5 bg-base-100/50 p-4 mt-4"
 			>
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized via DOMPurify -->
-				{@html renderedBody}
+				{#each renderedSections as section, i (section.tag)}
+					{#if i > 0}
+						<div class="divider my-4 opacity-20"></div>
+					{/if}
+					<p
+						class="text-base-content text-sm font-semibold border-l-2 border-accent/50 pl-3 {i > 0
+							? ''
+							: 'mt-0'} mb-3"
+					>
+						{section.name ?? section.tag}
+					</p>
+					<div class="prose prose-sm max-w-none text-base-content/75">
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized via DOMPurify -->
+						{@html section.html}
+					</div>
+				{/each}
 			</div>
-		{:else}
+		{:else if hasContent}
 			<div class="flex justify-center py-12">
 				<span class="loading loading-spinner loading-md text-accent/60"></span>
 			</div>

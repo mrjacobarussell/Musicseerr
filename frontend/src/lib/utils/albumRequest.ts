@@ -26,6 +26,80 @@ export type AlbumRequestContext = {
 	autoDownloadArtist?: boolean;
 };
 
+export type BatchAlbumItem = {
+	musicbrainz_id: string;
+	artist_name?: string;
+	album_title?: string;
+	year?: number | null;
+	artist_mbid?: string;
+};
+
+export type BatchRequestResult = {
+	success: boolean;
+	requested: number;
+	skipped: number;
+	overflow: number;
+	error?: string;
+};
+
+export async function requestBatch(
+	items: BatchAlbumItem[],
+	options?: { monitorArtist?: boolean; autoDownloadArtist?: boolean }
+): Promise<BatchRequestResult> {
+	try {
+		const response = await api.global.post<{
+			success: boolean;
+			message: string;
+			requested: number;
+			skipped: number;
+			overflow: number;
+		}>('/api/v1/requests/batch', {
+			items,
+			monitor_artist: options?.monitorArtist ?? false,
+			auto_download_artist: options?.autoDownloadArtist ?? false
+		});
+
+		for (const item of items) {
+			libraryStore.addRequested(item.musicbrainz_id);
+		}
+		notifyRequestCountChanged();
+
+		return {
+			success: response.success,
+			requested: response.requested,
+			skipped: response.skipped,
+			overflow: response.overflow
+		};
+	} catch (e) {
+		if (e instanceof ApiError) {
+			const errorDetail = e.message || 'Unknown error';
+			errorModal.show('Batch Request Failed', errorDetail, '');
+			return { success: false, requested: 0, skipped: 0, overflow: 0, error: errorDetail };
+		}
+		errorModal.show('Batch Request Failed', 'Network error occurred', '');
+		return {
+			success: false,
+			requested: 0,
+			skipped: 0,
+			overflow: 0,
+			error: 'Network error occurred'
+		};
+	}
+}
+
+export async function cancelBatch(
+	musicbrainzIds: string[]
+): Promise<{ success: boolean; cancelled: number; failed: number }> {
+	try {
+		return await api.global.post<{ success: boolean; cancelled: number; failed: number }>(
+			'/api/v1/requests/batch/cancel',
+			{ musicbrainz_ids: musicbrainzIds }
+		);
+	} catch {
+		return { success: false, cancelled: 0, failed: 0 };
+	}
+}
+
 export async function requestAlbum(
 	musicbrainzId: string,
 	context?: AlbumRequestContext

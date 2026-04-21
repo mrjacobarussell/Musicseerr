@@ -66,9 +66,10 @@ class PreferencesService:
         self._settings = settings
         self._config_path = settings.config_file_path
         self._config_cache: Optional[dict] = None
-        self._cache_lock = threading.Lock()
+        self._cache_lock = threading.RLock()
         self._migrate_corrupted_credentials()
         self._migrate_musicbrainz_settings()
+        self._ensure_instance_id()
 
     def _migrate_corrupted_credentials(self) -> None:
         """One-time migration: clear any credential values that contain the mask bullet character.
@@ -109,6 +110,22 @@ class PreferencesService:
                 logger.info("Credential migration complete — corrupted values cleared")
         except Exception as e:  # noqa: BLE001
             logger.error("Credential migration failed: %s", e)
+
+    def _ensure_instance_id(self) -> None:
+        """Generate a stable instance ID on first run."""
+        config = self._load_config()
+        if config.get("instance_id"):
+            return
+        import uuid
+        instance_id = str(uuid.uuid4())
+        config = self._load_config().copy()
+        config["instance_id"] = instance_id
+        self._save_config(config)
+        logger.info("Generated new instance ID: %s", instance_id)
+
+    def get_instance_id(self) -> str:
+        config = self._load_config()
+        return config.get("instance_id", "unknown")
 
     def _load_config(self) -> dict:
         with self._cache_lock:

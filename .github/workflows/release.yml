@@ -28,18 +28,53 @@ jobs:
             platform: linux/arm64
             arch: arm64
     runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Get build date
+        id: date
+        run: echo "timestamp=$(git log -1 --pretty=%cI)" >> "$GITHUB_OUTPUT"
+
+      - name: Warm cache (${{ matrix.platform }})
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: false
+          build-args: |
+            COMMIT_TAG=${{ steps.version.outputs.tag }}
+            BUILD_DATE=${{ steps.date.outputs.timestamp }}
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          provenance: false
+
+  publish:
+    name: Publish multi-arch image
+    needs: build
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -58,58 +93,17 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: echo "IMAGE=ghcr.io/$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')/musicseerr" >> $GITHUB_ENV
 
-      - name: Build and push (${{ matrix.arch }})
-        uses: docker/build-push-action@v6
+      - name: Build and push (multi-arch)
+        uses: docker/build-push-action@v7
         with:
           context: .
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.IMAGE }}:${{ steps.version.outputs.tag }}-${{ matrix.arch }}
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.version.outputs.tag }}
           build-args: |
             COMMIT_TAG=${{ steps.version.outputs.tag }}
             BUILD_DATE=${{ steps.date.outputs.timestamp }}
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          cache-from: type=gha,scope=linux/amd64
+          cache-to: type=gha,mode=max,scope=linux/amd64
           provenance: false
-
-  publish:
-    name: Create multi-arch manifest
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Log in to ghcr.io
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract version from tag
-        id: version
-        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-
-      - name: Set image name
-        env:
-          OWNER: ${{ github.repository_owner }}
-        run: echo "IMAGE=ghcr.io/$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')/musicseerr" >> $GITHUB_ENV
-
-      - name: Merge into versioned multi-arch manifest
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          docker buildx imagetools create \
-            -t "${IMAGE}:${TAG}" \
-            "${IMAGE}:${TAG}-amd64" \
-            "${IMAGE}:${TAG}-arm64"
-
-      - name: Tag latest (stable releases only)
-        if: ${{ !contains(steps.version.outputs.tag, '-') }}
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          docker buildx imagetools create \
-            -t "${IMAGE}:latest" \
-            "${IMAGE}:${TAG}"

@@ -4,6 +4,7 @@ from api.v1.schemas.discover import (
     DiscoverIntegrationStatus,
     QueueSettings,
 )
+from api.v1.schemas.settings import HomeSettings
 from services.preferences_service import PreferencesService
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,9 @@ class IntegrationHelpers:
         resolved = self.resolve_source(source)
         return f"{DISCOVER_CACHE_KEY}:{resolved}"
 
+    def get_home_settings(self) -> HomeSettings:
+        return self._preferences.get_home_settings()
+
     def get_integration_status(self) -> DiscoverIntegrationStatus:
         return DiscoverIntegrationStatus(
             listenbrainz=self.is_listenbrainz_enabled(),
@@ -80,3 +84,7 @@ class IntegrationHelpers:
             youtube=self.is_youtube_api_enabled(),
             lastfm=self.is_lastfm_enabled(),
         )
+
+    def get_discover_picks_settings(self) -> tuple[float, int]:
+        adv = self._preferences.get_advanced_settings()
+        return adv.discover_picks_genre_affinity_weight, adv.discover_picks_count

@@ -5,7 +5,6 @@ export const CACHE_KEY_GROUPS = {
 		LIBRARY_MBIDS: 'musicseerr_library_mbids',
 		RECENTLY_ADDED: 'musicseerr_recently_added',
 		HOME_CACHE: 'musicseerr_home_cache',
-		DISCOVER_CACHE: 'musicseerr_discover_cache',
 		DISCOVER_QUEUE: 'musicseerr_discover_queue',
 		SEARCH: 'musicseerr_search_cache'
 	},
@@ -62,7 +61,8 @@ export const CACHE_TTL_GROUPS = {
 		HOME: 5 * 60 * 1000,
 		DISCOVER: 30 * 60 * 1000,
 		DISCOVER_QUEUE: 24 * 60 * 60 * 1000,
-		SEARCH: 5 * 60 * 1000
+		SEARCH: 5 * 60 * 1000,
+		LYRICS: 60 * 60 * 1000
 	},
 	library: {
 		LOCAL_FILES_SIDEBAR: 2 * 60 * 1000,
@@ -134,12 +134,6 @@ export const IMAGE_PIXEL_SAMPLE_STEP = 16;
 
 export const ALPHA_THRESHOLD = 128;
 
-export const PLACEHOLDER_COLORS = {
-	DARK: '#0d120a',
-	MEDIUM: '#161d12',
-	LIGHT: '#1F271B'
-} as const;
-
 export const STATUS_COLORS = {
 	REQUESTED: '#F59E0B',
 	MONITORED: '#6B7280'
@@ -192,9 +186,11 @@ export const API = {
 		suggest: (query: string, limit = 5) =>
 			`/api/v1/search/suggest?q=${encodeURIComponent(query.trim())}&limit=${limit}`
 	},
-	home: (source: string) => `/api/v1/home?source=${encodeURIComponent(source)}`,
+	home: (source?: string) =>
+		source ? `/api/v1/home?source=${encodeURIComponent(source)}` : '/api/v1/home',
 	homeIntegrationStatus: () => '/api/v1/home/integration-status',
-	discover: () => '/api/v1/discover',
+	discover: (source?: string) =>
+		source ? `/api/v1/discover?source=${encodeURIComponent(source)}` : '/api/v1/discover',
 	discoverRefresh: () => '/api/v1/discover/refresh',
 	discoverQueue: (source?: string) => `/api/v1/discover/queue${source ? `?source=${source}` : ''}`,
 	discoverQueueStatus: (source?: string) =>
@@ -210,6 +206,9 @@ export const API = {
 		`/api/v1/discover/queue/youtube-track-search?artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}`,
 	discoverQueueYoutubeQuota: () => '/api/v1/discover/queue/youtube-quota',
 	discoverQueueYoutubeCacheCheck: () => '/api/v1/discover/queue/youtube-cache-check',
+	discoverRadio: () => '/api/v1/discover/radio',
+	discoverPlaylistSuggestions: () => '/api/v1/discover/playlist-suggestions',
+	discoverGenreDetail: (tag: string) => `/api/v1/discover/genres/${encodeURIComponent(tag)}`,
 	youtube: {
 		generate: () => '/api/v1/youtube/generate',
 		link: (albumId: string) => `/api/v1/youtube/link/${albumId}`,
@@ -309,6 +308,11 @@ export const API = {
 		embyStart: (itemId: string) => `/api/v1/stream/emby/${itemId}/start`,
 		embyProgress: (itemId: string) => `/api/v1/stream/emby/${itemId}/progress`,
 		embyStop: (itemId: string) => `/api/v1/stream/emby/${itemId}/stop`
+	},
+	download: {
+		localTrack: (trackId: number) => `/api/v1/download/local/track/${trackId}`,
+		localAlbum: (albumId: number) => `/api/v1/download/local/album/${albumId}`,
+		localAlbumByMbid: (mbid: string) => `/api/v1/download/local/album/mbid/${mbid}`
 	},
 	jellyfinLibrary: {
 		albumMatch: (mbid: string) => `/api/v1/jellyfin/albums/match/${mbid}`,

@@ -128,6 +128,7 @@
 						plexEnabled={$integrationStore.plex}
 						jellyfinCallbacks={state.jellyfinCallbacks}
 						localCallbacks={state.localCallbacks}
+						localDownloadCallback={state.localDownloadCallback}
 						navidromeCallbacks={state.navidromeCallbacks}
 						plexCallbacks={state.plexCallbacks}
 						onTrackLinksUpdate={state.handleTrackLinksUpdate}
@@ -154,6 +155,7 @@
 						trackLinks={state.trackLinks}
 						youtubeEnabled={$integrationStore.youtube}
 						youtubeApiConfigured={$integrationStore.youtube_api}
+						previewCacheMap={state.previewCacheMap}
 						jellyfinEnabled={$integrationStore.jellyfin}
 						localfilesEnabled={$integrationStore.localfiles}
 						navidromeEnabled={$integrationStore.navidrome}

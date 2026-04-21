@@ -1,6 +1,11 @@
+import msgspec.structs
 from fastapi import APIRouter, Depends, HTTPException, Request
 from api.v1.schemas.request import (
     AlbumRequest,
+    BatchAlbumRequest,
+    BatchCancelRequest,
+    BatchCancelResponse,
+    BatchRequestResponse,
     QueueStatusResponse,
     RequestAcceptedResponse,
 )
@@ -70,6 +75,26 @@ async def request_album(
         auto_download_artist=album_request.auto_download_artist,
         requested_by=username,
     )
+
+
+@router.post("/batch", response_model=BatchRequestResponse, status_code=202)
+async def request_batch(
+    batch: BatchAlbumRequest = MsgSpecBody(BatchAlbumRequest),
+    request_service: RequestService = Depends(get_request_service),
+):
+    return await request_service.request_batch(
+        items=[msgspec.structs.asdict(item) for item in batch.items],
+        monitor_artist=batch.monitor_artist,
+        auto_download_artist=batch.auto_download_artist,
+    )
+
+
+@router.post("/batch/cancel", response_model=BatchCancelResponse)
+async def cancel_batch(
+    body: BatchCancelRequest = MsgSpecBody(BatchCancelRequest),
+    request_service: RequestService = Depends(get_request_service),
+):
+    return await request_service.cancel_batch(body.musicbrainz_ids)
 
 
 @router.get("/new/queue-status", response_model=QueueStatusResponse)

@@ -102,6 +102,30 @@ class RequestQueue(QueueInterface):
             await self._queue.put(request)
             return True
 
+    async def enqueue_many(self, album_mbids: list[str]) -> tuple[int, int]:
+        """Enqueue multiple MBIDs. Returns (enqueued_count, overflow_count).
+
+        Uses put_nowait for the in-memory queue. Items that don't fit are
+        persisted to QueueStore and will be picked up by recovery.
+        """
+        async with self._enqueue_lock:
+            await self.start()
+            enqueued = 0
+            overflow = 0
+            for mbid in album_mbids:
+                if self._store and self._store.has_active_mbid(mbid):
+                    continue
+                self._cancelled_mbids.discard(mbid.lower())
+                request = QueuedRequest(mbid)
+                if self._store:
+                    self._store.enqueue(request.job_id, mbid)
+                try:
+                    self._queue.put_nowait(request)
+                    enqueued += 1
+                except asyncio.QueueFull:
+                    overflow += 1
+            return enqueued, overflow
+
     async def cancel(self, album_mbid: str) -> bool:
         """Remove a pending job from the queue. Returns True if removed."""
         removed = False

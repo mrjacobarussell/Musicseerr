@@ -117,6 +117,7 @@ class HomeService:
     async def get_home_data(self, source: str | None = None) -> HomeResponse:
         HOME_CACHE_TTL = 300
         resolved_source = self._helpers.resolve_source(source)
+        home_settings = self._preferences.get_home_settings()
 
         if self._memory_cache:
             cache_key = self._get_home_cache_key(source)
@@ -137,6 +138,12 @@ class HomeService:
                                 asyncio.create_task(
                                     self._genre.build_and_cache_genre_section(resolved_source, cur_names)
                                 )
+                if not home_settings.show_whats_hot:
+                    from infrastructure.serialization import clone_with_updates
+                    cached = clone_with_updates(cached, {
+                        "trending_artists": None,
+                        "popular_albums": None,
+                    })
                 return cached
 
         integration_status = self.get_integration_status()
@@ -149,10 +156,12 @@ class HomeService:
         tasks: dict[str, Any] = {}
 
         if resolved_source == "listenbrainz":
-            tasks["lb_trending_artists"] = self._lb_repo.get_sitewide_top_artists(count=20)
-            tasks["lb_trending_albums"] = self._lb_repo.get_sitewide_top_release_groups(count=20)
+            if home_settings.show_whats_hot:
+                tasks["lb_trending_artists"] = self._lb_repo.get_sitewide_top_artists(count=20)
+                tasks["lb_trending_albums"] = self._lb_repo.get_sitewide_top_release_groups(count=20)
         elif resolved_source == "lastfm" and self._lfm_repo and lfm_enabled:
-            tasks["lfm_global_top_artists"] = self._lfm_repo.get_global_top_artists(limit=20)
+            if home_settings.show_whats_hot:
+                tasks["lfm_global_top_artists"] = self._lfm_repo.get_global_top_artists(limit=20)
             if lfm_username:
                 tasks["lfm_top_albums"] = self._lfm_repo.get_user_top_albums(
                     lfm_username, period="1month", limit=20
@@ -206,12 +215,13 @@ class HomeService:
         response.library_albums = self._builders.build_library_albums_section(library_albums)
 
         if resolved_source == "listenbrainz":
-            response.trending_artists = self._builders.build_trending_artists_section(
-                results, library_artist_mbids
-            )
-            response.popular_albums = self._builders.build_popular_albums_section(
-                results, library_album_mbids, monitored_mbids
-            )
+            if home_settings.show_whats_hot:
+                response.trending_artists = self._builders.build_trending_artists_section(
+                    results, library_artist_mbids
+                )
+                response.popular_albums = self._builders.build_popular_albums_section(
+                    results, library_album_mbids, monitored_mbids
+                )
             response.your_top_albums = self._builders.build_lb_user_top_albums_section(
                 results, library_album_mbids, monitored_mbids
             )
@@ -219,9 +229,10 @@ class HomeService:
             response.favorite_artists = self._builders.build_listenbrainz_favorites_section(results)
             response.weekly_exploration = results.get("lb_weekly_exploration")
         elif resolved_source == "lastfm":
-            response.trending_artists = self._builders.build_lastfm_trending_section(
-                results, library_artist_mbids
-            )
+            if home_settings.show_whats_hot:
+                response.trending_artists = self._builders.build_lastfm_trending_section(
+                    results, library_artist_mbids
+                )
             response.your_top_albums = self._builders.build_lastfm_top_albums_section(
                 results, library_album_mbids, monitored_mbids
             )

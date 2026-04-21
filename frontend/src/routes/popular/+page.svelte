@@ -1,6 +1,6 @@
 <script lang="ts">
 	import TimeRangeView from '$lib/components/TimeRangeView.svelte';
-	import { type MusicSource } from '$lib/stores/musicSource';
+	import { type MusicSource, isMusicSource } from '$lib/stores/musicSource';
 	import { Disc3 } from 'lucide-svelte';
 	import type { PageProps } from './$types';
 	import { PersistedState } from 'runed';
@@ -15,11 +15,15 @@
 		data.primarySource
 	);
 
+	let validSource = $derived(
+		isMusicSource(activeSource.current) ? activeSource.current : data.primarySource
+	);
+
 	function handleSourceChange(nextSource: MusicSource) {
 		activeSource.current = nextSource;
 	}
 
-	let sourceLabel = $derived(activeSource.current === 'lastfm' ? 'Last.fm' : 'ListenBrainz');
+	let sourceLabel = $derived(validSource === 'lastfm' ? 'Last.fm' : 'ListenBrainz');
 </script>
 
 <svelte:head>
@@ -28,17 +32,14 @@
 
 <div class="space-y-4 px-4 sm:px-6 lg:px-8">
 	<div class="flex justify-end">
-		<SimpleSourceSwitcher
-			currentSource={activeSource.current}
-			onSourceChange={handleSourceChange}
-		/>
+		<SimpleSourceSwitcher currentSource={validSource} onSourceChange={handleSourceChange} />
 	</div>
 	<TimeRangeView
 		itemType="album"
 		endpoint="/api/v1/home/popular/albums"
 		title="Popular Right Now"
 		subtitle={`Most listened albums on ${sourceLabel}`}
-		source={activeSource.current}
+		source={validSource}
 		errorIcon={Disc3}
 	/>
 </div>

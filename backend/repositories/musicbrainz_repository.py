@@ -22,7 +22,14 @@ class MusicBrainzRepository(MusicBrainzArtistMixin, MusicBrainzAlbumMixin):
         self._apply_settings()
 
     def _apply_settings(self) -> None:
+        from api.v1.schemas.settings import (
+            is_official_musicbrainz, _OFFICIAL_MB_RATE_LIMIT, _OFFICIAL_MB_CONCURRENT_SEARCHES,
+        )
+
         settings = self._preferences_service.get_musicbrainz_connection()
+        if is_official_musicbrainz(settings.api_url):
+            settings.rate_limit = min(settings.rate_limit, _OFFICIAL_MB_RATE_LIMIT)
+            settings.concurrent_searches = min(settings.concurrent_searches, _OFFICIAL_MB_CONCURRENT_SEARCHES)
         set_mb_api_base(settings.api_url)
         mb_rate_limiter.update_rate(settings.rate_limit)
         if mb_rate_limiter.capacity != settings.concurrent_searches:

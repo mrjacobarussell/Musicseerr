@@ -9,7 +9,7 @@
 		HomeSection as HomeSectionType,
 		WeeklyExplorationSection as WeeklyExplorationSectionType
 	} from '$lib/types';
-	import { type MusicSource } from '$lib/stores/musicSource';
+	import { type MusicSource, isMusicSource } from '$lib/stores/musicSource';
 	import CarouselSkeleton from '$lib/components/CarouselSkeleton.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { getGreeting } from '$lib/utils/homeCache';
@@ -27,7 +27,11 @@
 	// svelte-ignore state_referenced_locally
 	let activeSource = new PersistedState<MusicSource>(PAGE_SOURCE_KEYS['home'], data.primarySource);
 
-	const homeQuery = getHomeQuery(() => activeSource.current);
+	let validSource = $derived(
+		isMusicSource(activeSource.current) ? activeSource.current : data.primarySource
+	);
+
+	const homeQuery = getHomeQuery(() => validSource);
 	const homeData = $derived(homeQuery.data);
 	const loading = $derived(homeQuery.isLoading);
 	const isUpdating = $derived(homeQuery.isRefetching);
@@ -39,7 +43,13 @@
 	}
 
 	type PreGenreBlock =
-		| { key: string; kind: 'section'; section: HomeSectionType; link?: string }
+		| {
+				key: string;
+				kind: 'section';
+				section: HomeSectionType;
+				link?: string;
+				showPreview?: boolean;
+		  }
 		| { key: 'weekly_exploration'; kind: 'weekly'; section: WeeklyExplorationSectionType };
 
 	function getPreGenreBlocks(): PreGenreBlock[] {
@@ -62,7 +72,7 @@
 			});
 		}
 		if (
-			activeSource.current === 'listenbrainz' &&
+			validSource === 'listenbrainz' &&
 			homeData.weekly_exploration &&
 			homeData.weekly_exploration.tracks.length > 0
 		) {
@@ -77,7 +87,8 @@
 				key: 'your_top_albums',
 				kind: 'section',
 				section: homeData.your_top_albums,
-				link: '/your-top'
+				link: '/your-top',
+				showPreview: false
 			});
 		}
 		if (homeData.recently_played && homeData.recently_played.items.length > 0) {
@@ -92,7 +103,8 @@
 				key: 'recently_added',
 				kind: 'section',
 				section: homeData.recently_added,
-				link: '/library/albums'
+				link: '/library/albums',
+				showPreview: false
 			});
 		}
 		return blocks;
@@ -170,10 +182,7 @@
 	</PageHeader>
 
 	<div class="flex justify-end px-4 -mt-4 mb-4 sm:px-6 lg:px-8">
-		<SimpleSourceSwitcher
-			currentSource={activeSource.current}
-			onSourceChange={handleSourceChange}
-		/>
+		<SimpleSourceSwitcher currentSource={validSource} onSourceChange={handleSourceChange} />
 	</div>
 
 	{#if homeQuery.error && !homeData}
@@ -235,7 +244,11 @@
 							{#each whatsHotBlocks as block (block.key)}
 								<div>
 									{#if block.kind === 'section'}
-										<HomeSection section={block.section} headerLink={block.link} />
+										<HomeSection
+											section={block.section}
+											headerLink={block.link}
+											showPreview={block.showPreview}
+										/>
 									{:else}
 										<WeeklyExploration
 											section={block.section}
@@ -257,7 +270,11 @@
 							{#each forYouBlocks as block (block.key)}
 								<div>
 									{#if block.kind === 'section'}
-										<HomeSection section={block.section} headerLink={block.link} />
+										<HomeSection
+											section={block.section}
+											headerLink={block.link}
+											showPreview={block.showPreview}
+										/>
 									{:else}
 										<WeeklyExploration
 											section={block.section}

@@ -4,15 +4,12 @@ import type { MusicSource } from '$lib/stores/musicSource';
 import type { HomeResponse } from '$lib/types';
 import { createQuery } from '@tanstack/svelte-query';
 import type { Getter } from 'runed';
-
-const keyFactory = {
-	home: (source: MusicSource) => ['home', source] as const
-};
+import { HomeQueryKeyFactory } from './HomeQueryKeyFactory';
 
 export const getHomeQuery = (getSource: Getter<MusicSource>) =>
 	createQuery(() => ({
 		staleTime: CACHE_TTL.HOME,
-		queryKey: keyFactory.home(getSource()),
+		queryKey: HomeQueryKeyFactory.home(getSource()),
 		queryFn: ({ signal }) =>
 			api.global.get<HomeResponse>(API.home(getSource()), {
 				signal

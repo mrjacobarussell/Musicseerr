@@ -12,11 +12,11 @@
 	import AudioQualityBadge from '$lib/components/AudioQualityBadge.svelte';
 	import NowPlayingIndicator from '$lib/components/NowPlayingIndicator.svelte';
 	import { getCoverUrl } from '$lib/utils/errorHandling';
-	import { API } from '$lib/constants';
-	import { api } from '$lib/api/client';
+	import { getLyricsQuery } from '$lib/queries/lyrics/LyricsQuery.svelte';
 	import {
 		X,
 		Music,
+		Disc3,
 		Shuffle,
 		SkipBack,
 		AlertCircle,
@@ -36,76 +36,20 @@
 	let lastCoverKey = '';
 	let eqPanelOpen = $state(false);
 	let queueDrawerOpen = $state(false);
-	import type { LyricLine } from '$lib/types';
 
 	let lyricsPanelOpen = $state(false);
-	let lyricsText = $state('');
-	let lyricsLines: LyricLine[] = $state([]);
-	let lyricsIsSynced = $state(false);
-	let lyricsLoading = $state(false);
-	let lyricsError = $state(false);
 
-	const supportsLyrics = $derived(
-		playerStore.nowPlaying?.sourceType === 'navidrome' ||
-			playerStore.nowPlaying?.sourceType === 'jellyfin'
-	);
+	const lyricsQuery = getLyricsQuery(() => playerStore.nowPlaying);
 
-	async function fetchLyrics() {
-		const np = playerStore.nowPlaying;
-		if (!np?.trackSourceId) return;
-		lyricsLoading = true;
-		lyricsError = false;
-		try {
-			let url: string;
-			if (np.sourceType === 'navidrome') {
-				url = API.navidromeLibrary.lyrics(np.trackSourceId, np.artistName, np.trackName);
-			} else if (np.sourceType === 'jellyfin') {
-				url = API.jellyfinLibrary.lyrics(np.trackSourceId);
-			} else {
-				return;
-			}
-			const data = await api.global
-				.get<{
-					text?: string;
-					lyrics_text?: string;
-					is_synced?: boolean;
-					lines?: LyricLine[];
-				}>(url)
-				.catch((e: unknown) => {
-					const status = (e as { status?: number })?.status;
-					lyricsText = '';
-					lyricsLines = [];
-					lyricsIsSynced = false;
-					if (status !== 404) lyricsError = true;
-					return null;
-				});
-			if (data === null) return;
-			if (np.sourceType === 'navidrome') {
-				lyricsText = data.text ?? '';
-				lyricsIsSynced = data.is_synced ?? false;
-				lyricsLines = data.lines ?? [];
-			} else {
-				lyricsText = data.lyrics_text ?? '';
-				lyricsIsSynced = data.is_synced ?? false;
-				lyricsLines = data.lines ?? [];
-			}
-		} catch {
-			lyricsText = '';
-			lyricsLines = [];
-			lyricsIsSynced = false;
-			lyricsError = true;
-		} finally {
-			lyricsLoading = false;
-		}
-	}
+	const supportsLyrics = $derived(lyricsQuery.isSuccess && lyricsQuery.data !== null);
+
+	$effect(() => {
+		void playerStore.nowPlaying;
+		lyricsPanelOpen = false;
+	});
 
 	function toggleLyrics() {
-		if (lyricsPanelOpen) {
-			lyricsPanelOpen = false;
-			return;
-		}
-		fetchLyrics();
-		lyricsPanelOpen = true;
+		lyricsPanelOpen = !lyricsPanelOpen;
 	}
 
 	function formatTime(seconds: number): string {
@@ -183,7 +127,7 @@
 					<div
 						class="w-15 h-15 rounded-lg shadow-lg bg-base-200 flex items-center justify-center shrink-0"
 					>
-						<Music class="h-6 w-6 opacity-40" />
+						<Disc3 class="h-6 w-6 text-base-content/20" />
 					</div>
 				{/if}
 				{#if playerStore.isPlaying}
@@ -347,7 +291,6 @@
 						<button
 							class="btn btn-ghost btn-sm btn-circle"
 							class:text-accent={lyricsPanelOpen}
-							class:loading={lyricsLoading}
 							onclick={toggleLyrics}
 							aria-label="Toggle lyrics"
 						>
@@ -451,11 +394,11 @@
 	<EqPanel bind:open={eqPanelOpen} onclose={() => (eqPanelOpen = false)} />
 	<LyricsPanel
 		bind:open={lyricsPanelOpen}
-		{lyricsText}
-		lines={lyricsLines}
-		isSynced={lyricsIsSynced}
-		isLoading={lyricsLoading}
-		hasError={lyricsError}
+		lyricsText={lyricsQuery.data?.text ?? ''}
+		lines={lyricsQuery.data?.lines ?? []}
+		isSynced={lyricsQuery.data?.is_synced ?? false}
+		isLoading={lyricsQuery.isFetching}
+		hasError={lyricsQuery.isError}
 		currentTime={playerStore.progress}
 		trackName={playerStore.nowPlaying?.trackName ?? ''}
 		artistName={playerStore.nowPlaying?.artistName ?? ''}

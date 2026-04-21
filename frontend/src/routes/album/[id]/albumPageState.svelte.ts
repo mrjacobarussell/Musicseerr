@@ -18,11 +18,13 @@ import type {
 	NavidromeTrackInfo,
 	PlexAlbumMatch,
 	PlexTrackInfo,
-	LastFmAlbumEnrichment
+	LastFmAlbumEnrichment,
+	TrackCacheCheckItem
 } from '$lib/types';
 import { libraryStore } from '$lib/stores/library';
 import { monitoredArtistsStore } from '$lib/stores/monitoredArtists';
 import { integrationStore } from '$lib/stores/integration';
+import { API } from '$lib/constants';
 import { isAbortError } from '$lib/utils/errorHandling';
 import { extractServiceStatus } from '$lib/utils/serviceStatus';
 import { api } from '$lib/api/client';
@@ -41,6 +43,7 @@ import { launchJellyfinPlayback } from '$lib/player/launchJellyfinPlayback';
 import { launchLocalPlayback } from '$lib/player/launchLocalPlayback';
 import { launchNavidromePlayback } from '$lib/player/launchNavidromePlayback';
 import { launchPlexPlayback } from '$lib/player/launchPlexPlayback';
+import { downloadFile } from '$lib/utils/downloadHelper';
 import type { MenuItem } from '$lib/components/ContextMenu.svelte';
 import {
 	fetchAlbumBasic,
@@ -113,6 +116,9 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 	let pollTimer: ReturnType<typeof setInterval> | null = null;
 	let artistInLidarr = $state(false);
 	let artistMonitored = $state(false);
+	const previewCacheMap = new SvelteMap<string, boolean>();
+	let lastPreviewCacheKey = '';
+	let previewCacheAbort: AbortController | null = null;
 
 	const trackLinkMap = $derived.by(
 		() => new SvelteMap(trackLinks.map((tl) => [getDiscTrackKey(tl), tl]))
@@ -143,11 +149,49 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		!!(album && (album.monitored || libraryStore.isMonitored(album.musicbrainz_id)))
 	);
 
+	$effect(() => {
+		const artist = album?.artist_name;
+		const tracks = tracksInfo?.tracks;
+		if (!artist || !tracks || tracks.length === 0) return;
+		const integrations = get(integrationStore);
+		if (!integrations.youtube_api) return;
+
+		const key = `${artist}|${tracks.map((t) => t.title).join('|')}`;
+		if (key === lastPreviewCacheKey) return;
+		lastPreviewCacheKey = key;
+
+		previewCacheAbort?.abort();
+		previewCacheAbort = new AbortController();
+		const signal = previewCacheAbort.signal;
+
+		(async () => {
+			try {
+				const data = await api.global.post<{ items: TrackCacheCheckItem[] }>(
+					API.discoverQueueYoutubeCacheCheck(),
+					{ items: tracks.map((t) => ({ artist, track: t.title })) },
+					{ signal }
+				);
+				if (lastPreviewCacheKey === key) {
+					for (const item of data.items) {
+						previewCacheMap.set(
+							`${item.artist.toLowerCase()}|${item.track.toLowerCase()}`,
+							item.cached
+						);
+					}
+				}
+			} catch (e) {
+				if (isAbortError(e)) return;
+			}
+		})();
+	});
+
 	function resetState() {
 		if (abortController) {
 			abortController.abort();
 			abortController = null;
 		}
+		previewCacheAbort?.abort();
+		previewCacheAbort = null;
 		stopPolling();
 		album = null;
 		tracksInfo = null;
@@ -173,6 +217,8 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		lastfmEnrichment = null;
 		loadingLastfm = true;
 		refreshing = false;
+		previewCacheMap.clear();
+		lastPreviewCacheKey = '';
 	}
 
 	function hydrateFromCache(albumId: string) {
@@ -647,6 +693,13 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		);
 	}
 
+	const localDownloadCallback = $derived<{ callback: (() => void) | undefined }>(
+		(() => {
+			const id = localMatch?.lidarr_album_id;
+			return { callback: id ? () => downloadFile(API.download.localAlbum(id)) : undefined };
+		})()
+	);
+
 	const jellyfinCallbacks: SourceCallbacks = buildSourceCallbacks(
 		() => jellyfinMatch,
 		launchJellyfinPlayback,
@@ -807,6 +860,9 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		get plexTrackMap() {
 			return plexTrackMap;
 		},
+		get previewCacheMap() {
+			return previewCacheMap;
+		},
 		get inLibrary() {
 			return inLibrary;
 		},
@@ -842,6 +898,7 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		},
 		jellyfinCallbacks,
 		localCallbacks,
+		localDownloadCallback,
 		navidromeCallbacks,
 		plexCallbacks,
 		...eventHandlers,

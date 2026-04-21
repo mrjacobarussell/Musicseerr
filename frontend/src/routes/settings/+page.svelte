@@ -22,6 +22,8 @@
 	import SettingsEmbyAuth from '$lib/components/settings/SettingsEmbyAuth.svelte';
 	import SettingsMusicBrainz from '$lib/components/settings/SettingsMusicBrainz.svelte';
 	import SettingsAbout from '$lib/components/settings/SettingsAbout.svelte';
+	import SettingsHome from '$lib/components/settings/SettingsHome.svelte';
+	import SettingsDiscover from '$lib/components/settings/SettingsDiscover.svelte';
 	import { getUpdateCheckQuery } from '$lib/queries/VersionQuery.svelte';
 	import {
 		Settings2,
@@ -37,7 +39,9 @@
 		Lock,
 		Info,
 		ArrowUpCircle,
-		Globe
+		Globe,
+		Home,
+		Compass
 	} from 'lucide-svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api/client';
@@ -100,6 +104,8 @@
 
 	const tabs = [
 		{ id: 'settings', label: 'Release Preferences', group: 'Preferences', icon: Settings2 },
+		{ id: 'home', label: 'Home', group: 'Preferences', icon: Home },
+		{ id: 'discover', label: 'Discover', group: 'Preferences', icon: Compass },
 		{ id: 'lastfm', label: 'Last.fm', group: 'Music Tracking', icon: Radio },
 		{ id: 'listenbrainz', label: 'ListenBrainz', group: 'Music Tracking', icon: Music },
 		{ id: 'scrobbling', label: 'Scrobbling', group: 'Music Tracking', icon: Activity },
@@ -202,6 +208,10 @@
 			<main class="flex-1">
 				{#if activeTab === 'settings'}
 					<SettingsPreferences />
+				{:else if activeTab === 'home'}
+					<SettingsHome />
+				{:else if activeTab === 'discover'}
+					<SettingsDiscover />
 				{:else if activeTab === 'music-source'}
 					<SettingsMusicSource />
 				{:else if activeTab === 'cache'}

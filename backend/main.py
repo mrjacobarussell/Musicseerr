@@ -55,6 +55,7 @@ from api.v1.routes import admin_users as admin_users_routes
 from api.v1.routes import emby_auth as emby_auth_routes
 from api.v1.routes import emby_library as emby_library_routes
 from api.v1.routes import version as version_routes
+from api.v1.routes import download as download_routes
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ async def lifespan(app: FastAPI):
     await init_app_state(app)
     
     preferences_service = get_preferences_service()
+    settings.instance_id = preferences_service.get_instance_id()
     advanced_settings = preferences_service.get_advanced_settings()
 
     cache = get_cache()
@@ -366,6 +368,7 @@ v1_router.include_router(admin_users_routes.router)
 v1_router.include_router(emby_auth_routes.router)
 v1_router.include_router(emby_library_routes.router)
 v1_router.include_router(version_routes.router)
+v1_router.include_router(download_routes.router)
 app.include_router(v1_router)
 
 mount_frontend(app)
