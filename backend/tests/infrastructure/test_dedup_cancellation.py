@@ -4,7 +4,7 @@ import pytest
 from infrastructure.http.deduplication import RequestDeduplicator
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_follower_task_cancellation_propagates():
     """When a follower's own task is cancelled, CancelledError must propagate."""
     dedup = RequestDeduplicator()
@@ -34,7 +34,7 @@ async def test_follower_task_cancellation_propagates():
     assert result == "result"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_leader_exception_propagates_to_follower():
     """When the leader raises, the follower receives the same exception."""
     dedup = RequestDeduplicator()
@@ -60,7 +60,7 @@ async def test_leader_exception_propagates_to_follower():
         await follower_task
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_leader_cancellation_follower_retries_as_leader():
     """When leader is cancelled, follower retries as new leader (bounded retry)."""
     dedup = RequestDeduplicator()
@@ -95,7 +95,7 @@ async def test_leader_cancellation_follower_retries_as_leader():
     assert call_count == 2
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_concurrent_followers_coalesce():
     """Multiple followers all receive the same result from one leader execution."""
     dedup = RequestDeduplicator()
@@ -129,7 +129,7 @@ async def test_concurrent_followers_coalesce():
     assert call_count == 1
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_disconnect_leader_follower_retries_as_leader():
     """When leader disconnects, one follower retries as the new leader."""
     from core.exceptions import ClientDisconnectedError
@@ -168,7 +168,7 @@ async def test_disconnect_leader_follower_retries_as_leader():
     assert follower_task.result() == expected_result
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_key_cleanup_after_completion():
     """After dedupe completes, the key is removed from _pending."""
     dedup = RequestDeduplicator()

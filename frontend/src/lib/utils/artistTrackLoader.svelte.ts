@@ -89,6 +89,8 @@ async function fetchAlbumTracksForSource(
 				if (!match?.found || !match.tracks.length) return [];
 				return buildQueueItemsFromPlex(match.tracks, meta);
 			}
+			default:
+				return [];
 		}
 	} catch {
 		if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
