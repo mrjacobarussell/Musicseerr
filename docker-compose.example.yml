@@ -9,6 +9,16 @@ services:
       #                        If using Docker --user, PUID/PGID are ignored (user mapping is external).
       - PORT=8688            # Internal port (must match the right side of "ports" below)
       - TZ=Etc/UTC           # Timezone — e.g. America/New_York, Europe/London
+
+      # ── HTTPS / SSL (choose one option or leave all commented for plain HTTP) ──
+      # Option A: Auto-generate a self-signed cert on first start (LAN / Tailscale)
+      #   Access via https://your-server-ip:8688 and accept the cert in your browser once.
+      # - SSL_AUTO=true
+      # - SSL_AUTO_HOSTNAME=musicseerr  # CN in the cert (optional, cosmetic)
+
+      # Option B: Use your own cert (Let's Encrypt, Cloudflare Origin, etc.)
+      # - SSL_CERTFILE=/certs/cert.pem
+      # - SSL_KEYFILE=/certs/key.pem
     ports:
       - "8688:8688"         # <host-port>:<container-port> — change the left side to remap
     volumes:
@@ -18,9 +28,11 @@ services:
       # The left side is the host path to your music (same as Lidarr's root folder).
       # The right side (/music) must match the "Music Directory Path" in Settings > Local Files.
       # - /path/to/music:/music:ro
+      # Optional: mount your own TLS certs (needed if using SSL Option B above)
+      # - /path/to/certs:/certs:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8688/health"]
+      test: ["CMD", "sh", "-c", "curl -fk http://localhost:8688/health 2>/dev/null || curl -fk https://localhost:8688/health 2>/dev/null"]
       interval: 30s
       timeout: 10s
       start_period: 15s

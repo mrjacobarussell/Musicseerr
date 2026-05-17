@@ -72,7 +72,8 @@ RUN mkdir -p /app/cache /app/config \
 EXPOSE ${PORT}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+    CMD curl -fk http://localhost:${PORT}/health 2>/dev/null || \
+        curl -fk https://localhost:${PORT}/health 2>/dev/null || exit 1
 
 ENTRYPOINT ["tini", "--", "/entrypoint.sh"]
-CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --loop uvloop --http httptools --workers 1"]
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --loop uvloop --http httptools --workers 1 ${SSL_CERTFILE:+--ssl-certfile $SSL_CERTFILE} ${SSL_KEYFILE:+--ssl-keyfile $SSL_KEYFILE}"]

@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     port: int = Field(default=8688)
     debug: bool = Field(default=False)
     log_level: str = Field(default="INFO")
+
+    # SSL / HTTPS
+    # Option 1: SSL_AUTO=true  → auto-generate a self-signed cert on first start
+    # Option 2: SSL_CERTFILE + SSL_KEYFILE → use your own cert (Let's Encrypt, etc.)
+    # Option 3: neither → plain HTTP (default, backward compatible)
+    ssl_auto:          bool          = Field(default=False,                    description="Auto-generate a self-signed TLS cert on startup")
+    ssl_auto_dir:      str           = Field(default="/app/config/ssl",        description="Directory to store the auto-generated cert and key")
+    ssl_auto_hostname: str           = Field(default="musicseerr",             description="Hostname/CN for the self-signed cert")
+    ssl_certfile:      str | None    = Field(default=None,                     description="Path to TLS certificate file (.pem)")
+    ssl_keyfile:       str | None    = Field(default=None,                     description="Path to TLS private key file (.pem)")
     
     cache_ttl_default: int = Field(default=60)
     cache_ttl_artist: int = Field(default=3600)

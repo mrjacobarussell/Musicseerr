@@ -75,4 +75,32 @@ for dir in /app/cache /app/config; do
     fi
 done
 
+# ── SSL cert generation ───────────────────────────────────────────────────────
+if [ "${SSL_AUTO:-false}" = "true" ] && [ -z "$SSL_CERTFILE" ]; then
+    SSL_DIR="${SSL_AUTO_DIR:-/app/config/ssl}"
+    SSL_HOST="${SSL_AUTO_HOSTNAME:-musicseerr}"
+    mkdir -p "$SSL_DIR" 2>/dev/null || true
+    chown musicseerr:musicseerr "$SSL_DIR" 2>/dev/null || true
+
+    if [ ! -f "$SSL_DIR/cert.pem" ] || [ ! -f "$SSL_DIR/key.pem" ]; then
+        echo "[init] SSL: generating self-signed certificate for '$SSL_HOST' ..."
+        gosu musicseerr:musicseerr openssl req -x509 -newkey rsa:4096 \
+            -keyout "$SSL_DIR/key.pem" \
+            -out    "$SSL_DIR/cert.pem" \
+            -days 3650 -nodes \
+            -subj "/CN=$SSL_HOST/O=MusicSeerr/OU=Self-Signed" \
+            -addext "subjectAltName=DNS:$SSL_HOST,DNS:localhost,DNS:*.local,IP:127.0.0.1" \
+            2>/dev/null \
+        && echo "[init] SSL: certificate generated at $SSL_DIR/cert.pem" \
+        || echo "[init] SSL: WARNING - certificate generation failed; falling back to HTTP"
+    else
+        echo "[init] SSL: reusing existing certificate at $SSL_DIR/cert.pem"
+    fi
+
+    if [ -f "$SSL_DIR/cert.pem" ] && [ -f "$SSL_DIR/key.pem" ]; then
+        export SSL_CERTFILE="$SSL_DIR/cert.pem"
+        export SSL_KEYFILE="$SSL_DIR/key.pem"
+    fi
+fi
+
 exec gosu musicseerr:musicseerr "$@"

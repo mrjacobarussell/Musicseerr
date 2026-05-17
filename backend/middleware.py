@@ -136,6 +136,12 @@ _AUTH_EXEMPT = {
     "/api/v1/plex/auth/poll",
 }
 
+# Path prefixes that are always accessible (covers are images loaded by <img> tags
+# which cannot attach Authorization headers)
+_AUTH_EXEMPT_PREFIXES = (
+    "/api/v1/covers/",
+)
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """When auth is enabled, require a valid Bearer JWT for all API routes."""
@@ -147,8 +153,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not path.startswith("/api/"):
             return await call_next(request)
 
-        # Exempt endpoints
-        if path in _AUTH_EXEMPT:
+        # Exempt endpoints (exact match or prefix)
+        if path in _AUTH_EXEMPT or path.startswith(_AUTH_EXEMPT_PREFIXES):
             return await call_next(request)
 
         from core.dependencies import get_auth_service
